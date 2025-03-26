@@ -1,9 +1,15 @@
 const drinkService = require("../services/drinkService");
+const { cloudinaryUpload } = require("../utils/cloudinary"); // Import the Cloudinary upload function
 
 const createDrink = async (req, res) => {
   try {
     const { vendorId } = req.vendor;
     const drinkData = req.body;
+    // If file was uploaded, upload to Cloudinary
+    if (req.file) {
+      const cloudinaryResponse = await cloudinaryUpload(req.file); // Upload the file to Cloudinary
+      additiveData.image = cloudinaryResponse.secure_url; // Save the Cloudinary URL
+    }
 
     const drink = await drinkService.createDrink(vendorId, drinkData);
 
@@ -38,6 +44,12 @@ const updateDrink = async (req, res) => {
     const { vendorId } = req.vendor;
     const { drinkId } = req.params;
     const updateData = req.body;
+
+    // If file was uploaded, upload to Cloudinary
+    if (req.file) {
+      const cloudinaryResponse = await cloudinaryUpload(req.file); // Upload the file to Cloudinary
+      updateData.image = cloudinaryResponse.secure_url; // Save the Cloudinary URL
+    }
 
     const drink = await drinkService.updateDrink(drinkId, vendorId, updateData);
 

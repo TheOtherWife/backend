@@ -1,10 +1,17 @@
 const packageOptionService = require("../services/packageOptionService");
+const { cloudinaryUpload } = require("../utils/cloudinary"); // Import the Cloudinary upload function
 
 // Create a new package option
 const createPackageOption = async (req, res) => {
   try {
     const { vendorId } = req.vendor;
     const packageOptionData = req.body;
+
+    // If file was uploaded, upload to Cloudinary
+    if (req.file) {
+      const cloudinaryResponse = await cloudinaryUpload(req.file); // Upload the file to Cloudinary
+      additiveData.image = cloudinaryResponse.secure_url; // Save the Cloudinary URL
+    }
 
     const packageOption = await packageOptionService.createPackageOption(
       vendorId,
@@ -48,6 +55,12 @@ const updatePackageOption = async (req, res) => {
     const { vendorId } = req.vendor;
     const { packageOptionId } = req.params;
     const updateData = req.body;
+
+    // If file was uploaded, upload to Cloudinary
+    if (req.file) {
+      const cloudinaryResponse = await cloudinaryUpload(req.file); // Upload the file to Cloudinary
+      updateData.image = cloudinaryResponse.secure_url; // Save the Cloudinary URL
+    }
 
     const packageOption = await packageOptionService.updatePackageOption(
       packageOptionId,

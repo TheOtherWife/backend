@@ -1,10 +1,17 @@
 const stewService = require("../services/stewServise");
+const { cloudinaryUpload } = require("../utils/cloudinary"); // Import the Cloudinary upload function
 
 // Create a new stew
 const createStew = async (req, res) => {
   try {
     const { vendorId } = req.vendor;
     const stewData = req.body;
+
+    // If file was uploaded, upload to Cloudinary
+    if (req.file) {
+      const cloudinaryResponse = await cloudinaryUpload(req.file); // Upload the file to Cloudinary
+      additiveData.image = cloudinaryResponse.secure_url; // Save the Cloudinary URL
+    }
 
     const stew = await stewService.createStew(vendorId, stewData);
 
@@ -41,6 +48,12 @@ const updateStew = async (req, res) => {
     const { vendorId } = req.vendor;
     const { stewId } = req.params;
     const updateData = req.body;
+
+    // If file was uploaded, upload to Cloudinary
+    if (req.file) {
+      const cloudinaryResponse = await cloudinaryUpload(req.file); // Upload the file to Cloudinary
+      updateData.image = cloudinaryResponse.secure_url; // Save the Cloudinary URL
+    }
 
     const stew = await stewService.updateStew(stewId, vendorId, updateData);
 

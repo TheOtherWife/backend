@@ -1,9 +1,17 @@
 const additiveService = require("../services/additiveService");
 
+const { cloudinaryUpload } = require("../utils/cloudinary"); // Import the Cloudinary upload function
+
 const createAdditive = async (req, res) => {
   try {
     const { vendorId } = req.vendor;
     const additiveData = req.body;
+
+    // If file was uploaded, upload to Cloudinary
+    if (req.file) {
+      const cloudinaryResponse = await cloudinaryUpload(req.file); // Upload the file to Cloudinary
+      additiveData.image = cloudinaryResponse.secure_url; // Save the Cloudinary URL
+    }
 
     const additive = await additiveService.createAdditive(
       vendorId,
@@ -41,6 +49,12 @@ const updateAdditive = async (req, res) => {
     const { vendorId } = req.vendor;
     const { additiveId } = req.params;
     const updateData = req.body;
+
+    // If file was uploaded, upload to Cloudinary
+    if (req.file) {
+      const cloudinaryResponse = await cloudinaryUpload(req.file); // Upload the file to Cloudinary
+      updateData.image = cloudinaryResponse.secure_url; // Save the Cloudinary URL
+    }
 
     const additive = await additiveService.updateAdditive(
       additiveId,

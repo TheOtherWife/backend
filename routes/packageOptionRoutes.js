@@ -1,6 +1,7 @@
 const express = require("express");
 const packageOptionController = require("../controllers/packageOptionController");
 const { vendorAuthMiddleware } = require("../middleware/authMiddleware");
+const upload = require("../utils/upload"); // Make sure this path is correct
 
 const router = express.Router();
 
@@ -8,6 +9,7 @@ const router = express.Router();
 router.post(
   "/",
   vendorAuthMiddleware,
+  upload.single("image"),
   packageOptionController.createPackageOption
 );
 
@@ -18,6 +20,7 @@ router.get("/:vendorId", packageOptionController.getPackageOptionsByVendorId);
 router.put(
   "/:packageOptionId",
   vendorAuthMiddleware,
+  upload.single("image"),
   packageOptionController.updatePackageOption
 );
 

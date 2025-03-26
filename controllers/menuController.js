@@ -1,10 +1,17 @@
 const menuService = require("../services/menuService");
+const { cloudinaryUpload } = require("../utils/cloudinary"); // Import the Cloudinary upload function
 
 // Create a new menu item
 const createMenu = async (req, res) => {
   try {
     const { vendorId } = req.vendor;
     const menuData = req.body;
+
+    // If file was uploaded, upload to Cloudinary
+    if (req.file) {
+      const cloudinaryResponse = await cloudinaryUpload(req.file); // Upload the file to Cloudinary
+      additiveData.image = cloudinaryResponse.secure_url; // Save the Cloudinary URL
+    }
 
     const menu = await menuService.createMenu(vendorId, menuData);
 
@@ -42,6 +49,11 @@ const updateMenu = async (req, res) => {
     const { menuId } = req.params;
     const updateData = req.body;
 
+    // If file was uploaded, upload to Cloudinary
+    if (req.file) {
+      const cloudinaryResponse = await cloudinaryUpload(req.file); // Upload the file to Cloudinary
+      updateData.image = cloudinaryResponse.secure_url; // Save the Cloudinary URL
+    }
     const menu = await menuService.updateMenu(menuId, vendorId, updateData);
 
     res.status(200).json({

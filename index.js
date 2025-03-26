@@ -12,8 +12,20 @@ const packageRoutes = require("./routes/packageOptionRoutes");
 const stewRoutes = require("./routes/stewRoutes");
 const cartRoutes = require("./routes/cartRoutes");
 const orderRoutes = require("./routes/orderRoutes");
+const { configureCloudinary, cloudinary } = require("./utils/cloudinary");
 
 dotenv.config();
+
+const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME;
+const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY;
+const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET;
+
+// Configure Cloudinary
+configureCloudinary(
+  CLOUDINARY_CLOUD_NAME,
+  CLOUDINARY_API_KEY,
+  CLOUDINARY_API_SECRET
+);
 
 const app = express();
 const PORT = process.env.PORT || 3000;

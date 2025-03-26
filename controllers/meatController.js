@@ -1,10 +1,16 @@
 const meatService = require("../services/meatService");
+const { cloudinaryUpload } = require("../utils/cloudinary"); // Import the Cloudinary upload function
 
 // Create a new meat
 const createMeat = async (req, res) => {
   try {
     const { vendorId } = req.vendor;
     const meatData = req.body;
+    // If file was uploaded, upload to Cloudinary
+    if (req.file) {
+      const cloudinaryResponse = await cloudinaryUpload(req.file); // Upload the file to Cloudinary
+      additiveData.image = cloudinaryResponse.secure_url; // Save the Cloudinary URL
+    }
 
     const meat = await meatService.createMeat(vendorId, meatData);
 
@@ -41,6 +47,12 @@ const updateMeat = async (req, res) => {
     const { vendorId } = req.vendor;
     const { meatId } = req.params;
     const updateData = req.body;
+
+    // If file was uploaded, upload to Cloudinary
+    if (req.file) {
+      const cloudinaryResponse = await cloudinaryUpload(req.file); // Upload the file to Cloudinary
+      updateData.image = cloudinaryResponse.secure_url; // Save the Cloudinary URL
+    }
 
     const meat = await meatService.updateMeat(meatId, vendorId, updateData);
 
