@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const bcrypt = require("bcrypt");
 
 const vendorSchema = new mongoose.Schema(
   {
@@ -47,11 +48,63 @@ const vendorSchema = new mongoose.Schema(
     bankName: { type: String, required: true },
     idImage: { type: String, required: true }, // File path or URL
     certificateImage: { type: String, required: true }, // File path or URL
-    password: { type: String, required: true }, // Add password field
+
+    password: { type: String, select: false },
+    passwordChangedAt: Date,
     resetPasswordToken: { type: String },
     resetPasswordExpires: { type: Date },
   },
   { timestamps: true }
 );
+
+// Middleware to hash password before saving
+vendorSchema.pre("save", async function (next) {
+  // Only run this function if password was actually modified
+  if (!this.isModified("password")) return next();
+
+  try {
+    // Hash the password with cost of 10
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+
+    // Set passwordChangedAt (minus 1 second to ensure token is created after)
+    this.passwordChangedAt = Date.now() - 1000;
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Method to check if password was changed after token was issued
+vendorSchema.methods.changedPasswordAfter = function (JWTTimestamp) {
+  if (this.passwordChangedAt) {
+    const changedTimestamp = parseInt(
+      this.passwordChangedAt.getTime() / 1000,
+      10
+    );
+    return JWTTimestamp < changedTimestamp;
+  }
+  return false;
+};
+
+// Method to compare entered password with hashed password
+vendorSchema.methods.correctPassword = async function (
+  candidatePassword,
+  userPassword
+) {
+  return await bcrypt.compare(candidatePassword, userPassword);
+};
+
+// Method to check if password changed after token was issued
+vendorSchema.methods.changedPasswordAfter = function (JWTTimestamp) {
+  if (this.passwordChangedAt) {
+    const changedTimestamp = parseInt(
+      this.passwordChangedAt.getTime() / 1000,
+      10
+    );
+    return JWTTimestamp < changedTimestamp;
+  }
+  return false;
+};
 
 module.exports = mongoose.model("Vendor", vendorSchema);

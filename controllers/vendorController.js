@@ -75,20 +75,56 @@ const forgotPassword = async (req, res) => {
 
 const changePassword = async (req, res) => {
   try {
-    const vendorId = req.vendor.vendorId; // Assuming vendorId is extracted from JWT
-    const { oldPassword, newPassword } = req.body;
-    const vendor = await vendorService.changePassword(
+    const vendorId = req.vendor.vendorId;
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+
+    // Validate input
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return res
+        .status(400)
+        .json({ message: "All password fields are required" });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ message: "New passwords do not match" });
+    }
+
+    if (currentPassword === newPassword) {
+      return res.status(400).json({
+        message: "New password must be different from current password",
+      });
+    }
+
+    // Validate password strength
+    const passwordRegex =
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    if (!passwordRegex.test(newPassword)) {
+      return res.status(400).json({
+        message:
+          "Password must contain at least 8 characters, one uppercase, one lowercase, one number and one special character",
+      });
+    }
+
+    // Call service to change password
+    const updatedVendor = await vendorService.changePassword(
       vendorId,
-      oldPassword,
+      currentPassword,
       newPassword
     );
 
     res.status(200).json({
+      success: true,
       message: "Password changed successfully",
-      vendor,
+      data: {
+        vendor: updatedVendor,
+      },
     });
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    console.error("Password change error:", error.message);
+    res.status(400).json({
+      success: false,
+      message: error.message || "Password change failed",
+    });
   }
 };
 

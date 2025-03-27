@@ -36,11 +36,7 @@ const registerVendor = async (vendorData) => {
     throw new Error("Vendor already exists");
   }
 
-  // Hash the password
-  const saltRounds = 10;
-  const hashedPassword = await bcrypt.hash(password, saltRounds);
-
-  // Create a new vendor
+  // Create a new vendor - password will be hashed by the pre-save hook
   const vendor = new Vendor({
     firstName,
     lastName,
@@ -59,7 +55,7 @@ const registerVendor = async (vendorData) => {
     bankName,
     idImage,
     certificateImage,
-    password: hashedPassword,
+    password, // No need to hash here - the pre-save hook will handle it
   });
 
   // Save the vendor to the database
@@ -67,7 +63,8 @@ const registerVendor = async (vendorData) => {
 
   // Exclude sensitive fields from the response
   const vendorResponse = vendor.toObject();
-  delete vendorResponse.password; // Exclude password
+  delete vendorResponse.password;
+  delete vendorResponse.__v;
 
   return vendorResponse;
 };
@@ -115,26 +112,37 @@ const forgotPassword = async (email) => {
   return resetToken;
 };
 
-const changePassword = async (vendorId, oldPassword, newPassword) => {
-  const vendor = await Vendor.findById(vendorId);
+const changePassword = async (vendorId, currentPassword, newPassword) => {
+  // Find vendor with password field included
+  const vendor = await Vendor.findById(vendorId).select("+password");
   if (!vendor) {
     throw new Error("Vendor not found");
   }
 
-  const isPasswordValid = await bcrypt.compare(oldPassword, vendor.password);
-  if (!isPasswordValid) {
-    throw new Error("Invalid old password");
+  // Verify current password using the model method
+  const isMatch = await vendor.correctPassword(
+    currentPassword,
+    vendor.password
+  );
+  if (!isMatch) {
+    throw new Error("Current password is incorrect");
   }
 
-  const hashedPassword = await bcrypt.hash(newPassword, 10);
-  vendor.password = hashedPassword;
+  // Check if new password is different
+  const isSame = await vendor.correctPassword(newPassword, vendor.password);
+  if (isSame) {
+    throw new Error("New password must be different from current password");
+  }
+
+  // Update password - the pre-save hook will handle hashing
+  vendor.password = newPassword;
   await vendor.save();
 
-  // Exclude sensitive fields from the response
+  // Generate response without sensitive data
   const vendorResponse = vendor.toObject();
   delete vendorResponse.password;
-  delete vendorResponse.bvn;
-  delete vendorResponse.accountNumber;
+  delete vendorResponse.__v;
+  delete vendorResponse.refreshToken;
 
   return vendorResponse;
 };
