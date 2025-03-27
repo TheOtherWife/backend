@@ -90,8 +90,13 @@ vendorSchema.methods.changedPasswordAfter = function (JWTTimestamp) {
 // Method to compare entered password with hashed password
 vendorSchema.methods.correctPassword = async function (
   candidatePassword,
-  userPassword
+  userPassword = this.password
 ) {
+  // Add validation
+  if (!candidatePassword || !userPassword) {
+    throw new Error("Both password and hash are required for comparison");
+  }
+
   return await bcrypt.compare(candidatePassword, userPassword);
 };
 

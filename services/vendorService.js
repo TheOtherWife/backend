@@ -70,12 +70,24 @@ const registerVendor = async (vendorData) => {
 };
 
 const loginVendor = async (email, password) => {
-  const vendor = await Vendor.findOne({ email });
+  // Add .select('+password') to include the password field
+  const vendor = await Vendor.findOne({ email }).select("+password");
+
   if (!vendor) {
     throw new Error("Vendor not found");
   }
 
-  const isPasswordValid = await bcrypt.compare(password, vendor.password);
+  // Add validation for empty password
+  if (!password || !vendor.password) {
+    throw new Error("Password is required");
+  }
+
+  // Use the instance method instead of direct bcrypt.compare
+  const isPasswordValid = await vendor.correctPassword(
+    password,
+    vendor.password
+  );
+
   if (!isPasswordValid) {
     throw new Error("Invalid password");
   }
