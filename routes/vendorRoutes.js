@@ -32,7 +32,17 @@ router.put(
 );
 
 // Edit profile
-router.put("/profile", vendorAuthMiddleware, vendorController.updateProfile);
+// router.put("/profile", vendorAuthMiddleware, vendorController.updateProfile);
+
+router.put(
+  "/profile",
+  vendorAuthMiddleware,
+  upload.fields([
+    { name: "idImage", maxCount: 1 },
+    { name: "certificateImage", maxCount: 1 },
+  ]),
+  vendorController.updateProfile
+);
 
 // Get a vendor by ID
 router.get("/:id", vendorController.getVendor);

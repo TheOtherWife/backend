@@ -89,7 +89,7 @@ const loginVendor = async (email, password) => {
 
   // Generate JWT token
   const token = jwt.sign({ vendorId: vendor._id }, process.env.JWT_SECRET, {
-    expiresIn: "1h",
+    expiresIn: "80000h",
   });
 
   // Exclude sensitive fields from the response
@@ -148,7 +148,7 @@ const changePassword = async (vendorId, oldPassword, newPassword) => {
 const updateProfile = async (vendorId, updateData) => {
   const vendor = await Vendor.findByIdAndUpdate(vendorId, updateData, {
     new: true,
-  }).select("-password -bvn -accountNumber");
+  }).select("-password");
   if (!vendor) {
     throw new Error("Vendor not found");
   }
