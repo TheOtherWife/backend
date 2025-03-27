@@ -25,8 +25,6 @@ const registerVendor = async (vendorData) => {
     password,
   } = vendorData;
 
-  console.log(vendorData.password);
-
   // Validate required fields
   if (!password) {
     throw new Error("Password is required");
@@ -70,8 +68,6 @@ const registerVendor = async (vendorData) => {
   // Exclude sensitive fields from the response
   const vendorResponse = vendor.toObject();
   delete vendorResponse.password; // Exclude password
-  delete vendorResponse.bvn; // Exclude BVN
-  delete vendorResponse.accountNumber; // Exclude account number
 
   return vendorResponse;
 };
@@ -95,8 +91,6 @@ const loginVendor = async (email, password) => {
   // Exclude sensitive fields from the response
   const vendorResponse = vendor.toObject();
   delete vendorResponse.password;
-  delete vendorResponse.bvn;
-  delete vendorResponse.accountNumber;
 
   return { vendor: vendorResponse, token };
 };
@@ -197,7 +191,7 @@ const getVendors = async (filters = {}, page = 1, limit = 10) => {
 
   // Fetch vendors with pagination
   const vendors = await Vendor.find(query)
-    .select("-password -bvn -accountNumber")
+    .select("-password")
     .skip(skip)
     .limit(limit);
 
