@@ -1,4 +1,6 @@
 const vendorService = require("../services/vendorService");
+const Vendor = require("../models/Vendor"); // ADD THIS LINE
+const mongoose = require("mongoose");
 
 const cloudinary = require("cloudinary").v2;
 
@@ -91,9 +93,22 @@ const changePassword = async (req, res) => {
 };
 
 const updateProfile = async (req, res) => {
+  // Initialize fileHandlers at the beginning
+  const fileHandlers = {
+    idImage: null,
+    certificateImage: null,
+  };
+
   try {
     const vendorId = req.vendor.vendorId;
+
+    // Validate vendorId
+    if (!vendorId || !mongoose.Types.ObjectId.isValid(vendorId)) {
+      throw new Error("Invalid vendor ID format");
+    }
+
     const updateData = req.body;
+    console.log("Update data:", JSON.stringify(updateData, null, 2));
 
     // Remove any password-related fields from updates
     delete updateData.password;
@@ -106,20 +121,23 @@ const updateProfile = async (req, res) => {
       throw new Error("No valid fields provided for update");
     }
 
-    // Handle ID image upload if exists
+    // Process ID image if exists
     if (req.files?.idImage) {
       try {
         const idImage = req.files.idImage[0];
+        console.log("Uploading ID image...");
         const result = await cloudinary.uploader.upload(idImage.path, {
           folder: "vendor_documents",
           resource_type: "image",
         });
         updateData.idImage = result.secure_url;
+        fileHandlers.idImage = result;
 
-        // Delete old image if exists
-        const vendor = await Vendor.findById(vendorId);
-        if (vendor.idImage) {
-          const publicId = vendor.idImage.split("/").pop().split(".")[0];
+        // Get current vendor data
+        const currentVendor = await Vendor.findById(vendorId).select("idImage");
+        if (currentVendor?.idImage) {
+          const publicId = currentVendor.idImage.split("/").pop().split(".")[0];
+          console.log("Deleting old ID image:", publicId);
           await cloudinary.uploader.destroy(`vendor_documents/${publicId}`);
         }
       } catch (uploadError) {
@@ -128,23 +146,28 @@ const updateProfile = async (req, res) => {
       }
     }
 
-    // Handle certificate image upload if exists
+    // Process certificate image if exists
     if (req.files?.certificateImage) {
       try {
         const certImage = req.files.certificateImage[0];
+        console.log("Uploading certificate image...");
         const result = await cloudinary.uploader.upload(certImage.path, {
           folder: "vendor_documents",
           resource_type: "image",
         });
         updateData.certificateImage = result.secure_url;
+        fileHandlers.certificateImage = result;
 
-        // Delete old image if exists
-        const vendor = await Vendor.findById(vendorId);
-        if (vendor.certificateImage) {
-          const publicId = vendor.certificateImage
+        // Get current vendor data
+        const currentVendor = await Vendor.findById(vendorId).select(
+          "certificateImage"
+        );
+        if (currentVendor?.certificateImage) {
+          const publicId = currentVendor.certificateImage
             .split("/")
             .pop()
             .split(".")[0];
+          console.log("Deleting old certificate image:", publicId);
           await cloudinary.uploader.destroy(`vendor_documents/${publicId}`);
         }
       } catch (uploadError) {
@@ -153,49 +176,51 @@ const updateProfile = async (req, res) => {
       }
     }
 
-    // Update profile data (excluding sensitive fields)
-    const vendor = await Vendor.findByIdAndUpdate(
+    // Update profile data
+    const updatedVendor = await Vendor.findByIdAndUpdate(
       vendorId,
       { $set: updateData },
       {
         new: true,
         runValidators: true,
-        select: "-password -__v -refreshToken", // Exclude sensitive fields
+        select: "-password -__v -refreshToken",
       }
-    );
+    ).lean();
 
-    if (!vendor) {
+    if (!updatedVendor) {
       throw new Error("Vendor not found");
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Profile updated successfully",
       data: {
-        vendor: vendor.toObject({ getters: true, virtuals: false }),
+        vendor: updatedVendor,
       },
     });
   } catch (error) {
-    console.error("Error in updateProfile controller:", error.message);
+    console.error("Error in updateProfile controller:", error);
 
     // Clean up uploaded files if update failed
     try {
-      if (req.files?.idImage && updateData.idImage) {
-        const publicId = updateData.idImage.split("/").pop().split(".")[0];
-        await cloudinary.uploader.destroy(`vendor_documents/${publicId}`);
+      if (fileHandlers.idImage) {
+        console.log("Cleaning up ID image:", fileHandlers.idImage.public_id);
+        await cloudinary.uploader.destroy(fileHandlers.idImage.public_id);
       }
-      if (req.files?.certificateImage && updateData.certificateImage) {
-        const publicId = updateData.certificateImage
-          .split("/")
-          .pop()
-          .split(".")[0];
-        await cloudinary.uploader.destroy(`vendor_documents/${publicId}`);
+      if (fileHandlers.certificateImage) {
+        console.log(
+          "Cleaning up certificate image:",
+          fileHandlers.certificateImage.public_id
+        );
+        await cloudinary.uploader.destroy(
+          fileHandlers.certificateImage.public_id
+        );
       }
     } catch (cleanupError) {
       console.error("Error during cleanup:", cleanupError);
     }
 
-    res.status(400).json({
+    return res.status(400).json({
       success: false,
       message: error.message || "Profile update failed",
       error: process.env.NODE_ENV === "development" ? error.stack : undefined,

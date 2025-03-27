@@ -36,7 +36,6 @@ const vendorAuthMiddleware = (req, res, next) => {
     // Attach the vendorId to the request object
     req.vendor = { vendorId: decoded.vendorId };
 
-    // Proceed to the next middleware or route handler
     next();
   } catch (error) {
     console.error("Error in authMiddleware:", error.message);
