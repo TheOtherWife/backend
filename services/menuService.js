@@ -1,5 +1,39 @@
 const Menu = require("../models/menuModel");
 
+const Additive = require("../models/additiveModel");
+const Meat = require("../models/meatModel");
+const PackageOption = require("../models/packageModel");
+const Stew = require("../models/stewModel");
+const Drink = require("../models/drinkModel");
+
+// Add this new service function
+const getAllVendorProducts = async (vendorId) => {
+  try {
+    // Fetch all categories in parallel for better performance
+    const [menus, packageOptions, additives, meats, stews, drinks] =
+      await Promise.all([
+        Menu.find({ vendorId }).lean(),
+        PackageOption.find({ vendorId }).lean(),
+        Additive.find({ vendorId }).lean(),
+        Meat.find({ vendorId }).lean(),
+        Stew.find({ vendorId }).lean(),
+        Drink.find({ vendorId }).lean(),
+      ]);
+
+    return {
+      menus,
+      packageOptions,
+      additives,
+      meats,
+      stews,
+      drinks,
+    };
+  } catch (error) {
+    console.error("Error in getAllVendorProducts service:", error.message);
+    throw error;
+  }
+};
+
 // Create a new menu item
 const createMenu = async (vendorId, menuData) => {
   try {
@@ -85,10 +119,29 @@ const makeMenuUnavailable = async (menuId, vendorId) => {
   }
 };
 
+// You can add this (but it's essentially the same as getMenusByVendorId)
+const getMenusForVendor = async (vendorId) => {
+  try {
+    const menus = await Menu.find({ vendorId })
+      .populate("packageOptions")
+      .populate("additives")
+      .populate("drinks")
+      .populate("meats")
+      .populate("stews");
+
+    return menus;
+  } catch (error) {
+    console.error("Error in getMenusForVendor service:", error.message);
+    throw error;
+  }
+};
+
 module.exports = {
   createMenu,
   getMenusByVendorId,
   updateMenu,
   deleteMenu,
   makeMenuUnavailable,
+  getMenusForVendor,
+  getAllVendorProducts,
 };

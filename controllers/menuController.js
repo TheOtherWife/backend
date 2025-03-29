@@ -102,10 +102,47 @@ const makeMenuUnavailable = async (req, res) => {
   }
 };
 
+const getMenusForLoggedInVendor = async (req, res) => {
+  try {
+    const { vendorId } = req.vendor; // Get vendorId from authenticated vendor
+
+    const menus = await menuService.getMenusByVendorId(vendorId);
+
+    res.status(200).json({
+      message: "Menu items retrieved successfully",
+      menus,
+    });
+  } catch (error) {
+    console.error(
+      "Error in getMenusForLoggedInVendor controller:",
+      error.message
+    );
+    res.status(400).json({ message: error.message });
+  }
+};
+
+const getAllVendorProducts = async (req, res) => {
+  try {
+    const { vendorId } = req.vendor;
+
+    const products = await menuService.getAllVendorProducts(vendorId);
+
+    res.status(200).json({
+      message: "All vendor products retrieved successfully",
+      products,
+    });
+  } catch (error) {
+    console.error("Error in getAllVendorProducts controller:", error.message);
+    res.status(400).json({ message: error.message });
+  }
+};
+
 module.exports = {
   createMenu,
   getMenusByVendorId,
   updateMenu,
   deleteMenu,
   makeMenuUnavailable,
+  getMenusForLoggedInVendor,
+  getAllVendorProducts,
 };

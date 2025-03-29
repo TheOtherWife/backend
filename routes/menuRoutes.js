@@ -13,6 +13,19 @@ router.post(
   menuController.createMenu
 );
 
+// Add this to your existing menuRoutes.js
+router.get(
+  "/menus",
+  vendorAuthMiddleware,
+  menuController.getMenusForLoggedInVendor
+);
+
+router.get(
+  "/all-products",
+  vendorAuthMiddleware,
+  menuController.getAllVendorProducts
+);
+
 // Get all menu items for a vendor
 router.get("/:vendorId", menuController.getMenusByVendorId);
 
