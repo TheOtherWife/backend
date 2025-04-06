@@ -280,23 +280,105 @@ const getVendor = async (req, res) => {
 
 const getVendors = async (req, res) => {
   try {
-    const { location, name, cuisine, page = 1, limit = 24 } = req.query;
-    const filters = { location, name, cuisine };
+    const {
+      search,
+      minPrice,
+      maxPrice,
+      preparationType,
+      minRating,
+      category,
+      location,
+      page = 1,
+      limit = 24,
+    } = req.query;
 
-    // Convert page and limit to numbers
-    const pageNumber = parseInt(page, 10);
-    const limitNumber = parseInt(limit, 10);
+    // Build the query object
+    const query = {};
 
-    const { vendors, totalVendors, totalPages, currentPage } =
-      await vendorService.getVendors(filters, pageNumber, limitNumber);
+    // Search across multiple fields
+    if (search) {
+      query.$or = [
+        { firstName: { $regex: search, $options: "i" } },
+        { lastName: { $regex: search, $options: "i" } },
+        { "menuItems.name": { $regex: search, $options: "i" } },
+        { "menuItems.description": { $regex: search, $options: "i" } },
+        { cuisineSpecifications: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    // Price range filter
+    if (minPrice || maxPrice) {
+      query["menuItems.price"] = {};
+      if (minPrice) query["menuItems.price"].$gte = Number(minPrice);
+      if (maxPrice) query["menuItems.price"].$lte = Number(maxPrice);
+    }
+
+    // Preparation type filter
+    if (preparationType) {
+      query["menuItems.preparationType"] = { $in: preparationType.split(",") };
+    }
+
+    // Rating filter
+    if (minRating) {
+      query.averageRating = { $gte: Number(minRating) };
+    }
+
+    // Category filter
+    if (category) {
+      query.cuisineSpecifications = { $regex: category, $options: "i" };
+    }
+
+    // Location filter
+    if (location) {
+      query.$or = [
+        { city: { $regex: location, $options: "i" } },
+        { state: { $regex: location, $options: "i" } },
+      ];
+    }
+
+    // Pagination
+    const pageNumber = parseInt(page);
+    const limitNumber = parseInt(limit);
+    const skip = (pageNumber - 1) * limitNumber;
+
+    // Get vendors with menu items
+    const vendors = await Vendor.aggregate([
+      { $match: query },
+      {
+        $lookup: {
+          from: "menuitems",
+          localField: "_id",
+          foreignField: "vendor",
+          as: "menuItems",
+        },
+      },
+      {
+        $lookup: {
+          from: "reviews",
+          localField: "_id",
+          foreignField: "vendor",
+          as: "reviews",
+        },
+      },
+      {
+        $addFields: {
+          averageRating: { $avg: "$reviews.rating" },
+        },
+      },
+      { $skip: skip },
+      { $limit: limitNumber },
+    ]);
+
+    // Get total count for pagination
+    const totalVendors = await Vendor.countDocuments(query);
 
     res.status(200).json({
       message: "Vendors retrieved successfully",
       vendors,
       pagination: {
         totalVendors,
-        totalPages,
-        currentPage,
+        totalPages: Math.ceil(totalVendors / limitNumber),
+        currentPage: pageNumber,
         limit: limitNumber,
       },
     });

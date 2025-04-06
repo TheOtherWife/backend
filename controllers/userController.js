@@ -34,18 +34,12 @@ const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Log the incoming request payload for debugging
-    console.log("Login request payload:", { email, password });
-
     // Call the service to log in the user
     const { user, token } = await userService.loginUser(email, password);
 
     // Exclude password from the response
     const userResponse = { ...user }; // Ensure this line is present
     delete userResponse.password;
-
-    // Log the successful login for debugging
-    console.log("User data in controller:", userResponse);
 
     res.status(200).json({
       message: "Login successful",

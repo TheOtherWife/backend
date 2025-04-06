@@ -179,13 +179,34 @@ const getVendorById = async (vendorId) => {
   return vendor;
 };
 
+// vendorService.js
 const getVendors = async (filters = {}, page = 1, limit = 10) => {
-  console.log("got here");
-  const { location, name, cuisine } = filters;
+  const {
+    location,
+    name,
+    cuisine,
+    minPrice,
+    maxPrice,
+    preparationType,
+    minRating,
+    category,
+    searchQuery,
+  } = filters;
 
   const query = {};
 
-  // Search by location (city or state)
+  // Search by multiple fields if searchQuery is provided
+  if (searchQuery) {
+    query.$or = [
+      { firstName: { $regex: searchQuery, $options: "i" } },
+      { lastName: { $regex: searchQuery, $options: "i" } },
+      { "menuItems.name": { $regex: searchQuery, $options: "i" } },
+      { "menuItems.description": { $regex: searchQuery, $options: "i" } },
+      { cuisineSpecifications: { $regex: searchQuery, $options: "i" } },
+    ];
+  }
+
+  // Location filter (city or state)
   if (location) {
     query.$or = [
       { city: { $regex: location, $options: "i" } },
@@ -193,27 +214,50 @@ const getVendors = async (filters = {}, page = 1, limit = 10) => {
     ];
   }
 
-  // Search by name (first name or last name)
-  if (name) {
-    query.$or = [
-      { firstName: { $regex: name, $options: "i" } },
-      { lastName: { $regex: name, $options: "i" } },
-    ];
+  // Category filter (cuisine type)
+  if (category) {
+    query.cuisineSpecifications = { $regex: category, $options: "i" };
   }
 
-  // Search by cuisine
-  if (cuisine) {
-    query.cuisineSpecifications = { $regex: cuisine, $options: "i" };
+  // Price range filter (assuming vendors have menu items with prices)
+  if (minPrice || maxPrice) {
+    query["menuItems.price"] = {};
+    if (minPrice) query["menuItems.price"].$gte = Number(minPrice);
+    if (maxPrice) query["menuItems.price"].$lte = Number(maxPrice);
+  }
+
+  // Preparation type filter
+  if (preparationType) {
+    query["menuItems.preparationType"] = { $in: preparationType.split(",") };
+  }
+
+  // Rating filter
+  if (minRating) {
+    query.averageRating = { $gte: Number(minRating) };
   }
 
   // Calculate skip value for pagination
   const skip = (page - 1) * limit;
 
-  // Fetch vendors with pagination
-  const vendors = await Vendor.find(query)
-    .select("-password")
-    .skip(skip)
-    .limit(limit);
+  // Fetch vendors with their menu items and apply aggregation for filtering
+  const vendors = await Vendor.aggregate([
+    { $match: query },
+    { $skip: skip },
+    { $limit: limit },
+    {
+      $lookup: {
+        from: "menuitems", // Assuming you have a MenuItem collection
+        localField: "_id",
+        foreignField: "vendor",
+        as: "menuItems",
+      },
+    },
+    {
+      $addFields: {
+        averageRating: { $avg: "$reviews.rating" }, // Calculate average rating
+      },
+    },
+  ]);
 
   // Get total count of vendors (for pagination metadata)
   const totalVendors = await Vendor.countDocuments(query);
