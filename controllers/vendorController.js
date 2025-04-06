@@ -278,10 +278,12 @@ const getVendor = async (req, res) => {
   }
 };
 
+// In your vendorController.js
 const getVendors = async (req, res) => {
   try {
+    // Extract query parameters
     const {
-      search,
+      searchQuery, // Changed from 'search' to match frontend
       minPrice,
       maxPrice,
       preparationType,
@@ -292,40 +294,16 @@ const getVendors = async (req, res) => {
       limit = 24,
     } = req.query;
 
-    // Build the query object
     const query = {};
 
-    // Search across multiple fields
-    if (search) {
+    // Search filter
+    if (searchQuery) {
       query.$or = [
-        { firstName: { $regex: search, $options: "i" } },
-        { lastName: { $regex: search, $options: "i" } },
-        { "menuItems.name": { $regex: search, $options: "i" } },
-        { "menuItems.description": { $regex: search, $options: "i" } },
-        { cuisineSpecifications: { $regex: search, $options: "i" } },
+        { firstName: { $regex: searchQuery, $options: "i" } },
+        { lastName: { $regex: searchQuery, $options: "i" } },
+        { "menuItems.name": { $regex: searchQuery, $options: "i" } },
+        { cuisineSpecifications: { $regex: searchQuery, $options: "i" } },
       ];
-    }
-
-    // Price range filter
-    if (minPrice || maxPrice) {
-      query["menuItems.price"] = {};
-      if (minPrice) query["menuItems.price"].$gte = Number(minPrice);
-      if (maxPrice) query["menuItems.price"].$lte = Number(maxPrice);
-    }
-
-    // Preparation type filter
-    if (preparationType) {
-      query["menuItems.preparationType"] = { $in: preparationType.split(",") };
-    }
-
-    // Rating filter
-    if (minRating) {
-      query.averageRating = { $gte: Number(minRating) };
-    }
-
-    // Category filter
-    if (category) {
-      query.cuisineSpecifications = { $regex: category, $options: "i" };
     }
 
     // Location filter
@@ -336,40 +314,16 @@ const getVendors = async (req, res) => {
       ];
     }
 
-    // Pagination
-    const pageNumber = parseInt(page);
-    const limitNumber = parseInt(limit);
-    const skip = (pageNumber - 1) * limitNumber;
+    // Category filter
+    if (category) {
+      query.cuisineSpecifications = { $regex: category, $options: "i" };
+    }
 
-    // Get vendors with menu items
-    const vendors = await Vendor.aggregate([
-      { $match: query },
-      {
-        $lookup: {
-          from: "menuitems",
-          localField: "_id",
-          foreignField: "vendor",
-          as: "menuItems",
-        },
-      },
-      {
-        $lookup: {
-          from: "reviews",
-          localField: "_id",
-          foreignField: "vendor",
-          as: "reviews",
-        },
-      },
-      {
-        $addFields: {
-          averageRating: { $avg: "$reviews.rating" },
-        },
-      },
-      { $skip: skip },
-      { $limit: limitNumber },
-    ]);
+    // Get vendors (without additional filters for now)
+    const vendors = await Vendor.find(query)
+      .skip((page - 1) * limit)
+      .limit(limit);
 
-    // Get total count for pagination
     const totalVendors = await Vendor.countDocuments(query);
 
     res.status(200).json({
@@ -377,9 +331,9 @@ const getVendors = async (req, res) => {
       vendors,
       pagination: {
         totalVendors,
-        totalPages: Math.ceil(totalVendors / limitNumber),
-        currentPage: pageNumber,
-        limit: limitNumber,
+        totalPages: Math.ceil(totalVendors / limit),
+        currentPage: Number(page),
+        limit: Number(limit),
       },
     });
   } catch (error) {
