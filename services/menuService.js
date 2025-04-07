@@ -73,7 +73,7 @@ const getMenuById = async (menuId) => {
       .populate("stews")
       .populate({
         path: "vendorId",
-        select: "name email phone address", // Include the vendor fields you want
+        select: "firstName lastName email phone city", // Include the vendor fields you want
       });
 
     if (!menu) {
