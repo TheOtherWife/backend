@@ -29,6 +29,8 @@ router.get(
 // Get all menu items for a vendor
 router.get("/:vendorId", menuController.getMenusByVendorId);
 
+router.get("/detail/:menuId", menuController.getMenuById);
+
 // Update a menu item
 router.put(
   "/:menuId",

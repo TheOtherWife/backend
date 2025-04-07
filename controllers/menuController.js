@@ -42,6 +42,24 @@ const getMenusByVendorId = async (req, res) => {
   }
 };
 
+const getMenuById = async (req, res) => {
+  try {
+    const { menuId } = req.params;
+
+    const menu = await menuService.getMenuById(menuId);
+
+    res.status(200).json({
+      message: "Menu retrieved successfully",
+      menu,
+    });
+  } catch (error) {
+    console.error("Error in getMenuById controller:", error.message);
+    res.status(error.message === "Menu not found" ? 404 : 400).json({
+      message: error.message,
+    });
+  }
+};
+
 // Update a menu item
 const updateMenu = async (req, res) => {
   try {
@@ -140,6 +158,7 @@ const getAllVendorProducts = async (req, res) => {
 module.exports = {
   createMenu,
   getMenusByVendorId,
+  getMenuById,
   updateMenu,
   deleteMenu,
   makeMenuUnavailable,

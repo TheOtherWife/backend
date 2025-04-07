@@ -63,6 +63,30 @@ const getMenusByVendorId = async (vendorId) => {
   }
 };
 
+const getMenuById = async (menuId) => {
+  try {
+    const menu = await Menu.findById(menuId)
+      .populate("packageOptions")
+      .populate("additives")
+      .populate("drinks")
+      .populate("meats")
+      .populate("stews")
+      .populate({
+        path: "vendorId",
+        select: "name email phone address", // Include the vendor fields you want
+      });
+
+    if (!menu) {
+      throw new Error("Menu not found");
+    }
+
+    return menu;
+  } catch (error) {
+    console.error("Error in getMenuById service:", error.message);
+    throw error;
+  }
+};
+
 // Update a menu item
 const updateMenu = async (menuId, vendorId, updateData) => {
   try {
@@ -139,6 +163,7 @@ const getMenusForVendor = async (vendorId) => {
 module.exports = {
   createMenu,
   getMenusByVendorId,
+  getMenuById,
   updateMenu,
   deleteMenu,
   makeMenuUnavailable,
