@@ -112,6 +112,7 @@ const orderSchema = new mongoose.Schema(
     rating: {
       score: { type: Number, min: 1, max: 5 },
       comment: String,
+      ratedAt: Date,
     },
   },
   { timestamps: true }

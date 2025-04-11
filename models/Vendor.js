@@ -53,6 +53,8 @@ const vendorSchema = new mongoose.Schema(
     passwordChangedAt: Date,
     resetPasswordToken: { type: String },
     resetPasswordExpires: { type: Date },
+    averageRating: { type: Number, default: 0 },
+    ratingCount: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

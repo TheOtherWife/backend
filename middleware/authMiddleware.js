@@ -1,18 +1,15 @@
 const jwt = require("jsonwebtoken");
 
 const authMiddleware = (req, res, next) => {
-  console.log("got here");
   try {
     // Get the token from the Authorization header
     const token = req.headers.authorization?.split(" ")[1]; // Format: "Bearer <token>"
     if (!token) {
       return res.status(401).json({ message: "No token provided" });
     }
-    console.log(token);
 
     // Verify the token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log(decoded);
 
     // Attach the userId to the request object
     req.user = { userId: decoded.userId };

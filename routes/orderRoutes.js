@@ -8,14 +8,16 @@ const {
 
 // User routes
 router.post("/checkout", authMiddleware, orderController.checkout);
+router.get("/vendor", vendorAuthMiddleware, orderController.getVendorOrders);
 router.get("/user", authMiddleware, orderController.getUserOrders);
 router.get("/:orderId", authMiddleware, orderController.getOrder);
 
 // Payment callback (could be from payment gateway)
 router.post("/:orderId/payment-callback", orderController.paymentCallback);
 
+router.post("/:orderId/rate", authMiddleware, orderController.submitRating);
+
 // Vendor routes
-router.get("/vendor", vendorAuthMiddleware, orderController.getVendorOrders);
 router.patch(
   "/:orderId/status",
   vendorAuthMiddleware,

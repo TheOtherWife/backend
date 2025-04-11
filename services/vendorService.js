@@ -270,6 +270,30 @@ const getVendors = async (filters = {}, page = 1, limit = 10) => {
   };
 };
 
+async function updateVendorRating(vendorId) {
+  // Get all delivered orders for this vendor with ratings
+  const orders = await Order.find({
+    vendorId,
+    status: "delivered",
+    "rating.score": { $exists: true },
+  });
+
+  if (orders.length === 0) return;
+
+  // Calculate average rating
+  const totalRatings = orders.reduce(
+    (sum, order) => sum + order.rating.score,
+    0
+  );
+  const averageRating = totalRatings / orders.length;
+
+  // Update vendor's average rating
+  await Vendor.findByIdAndUpdate(vendorId, {
+    averageRating: parseFloat(averageRating.toFixed(1)),
+    ratingCount: orders.length,
+  });
+}
+
 module.exports = {
   registerVendor,
   loginVendor,
@@ -278,4 +302,5 @@ module.exports = {
   updateProfile,
   getVendorById,
   getVendors,
+  updateVendorRating,
 };

@@ -128,18 +128,22 @@ async function addToCart(userId, cartItemData) {
 
 async function updateCartItem(userId, itemId, updateData) {
   const cart = await findOrCreateCart(userId);
-  const item = cart.items.id(itemId);
 
-  if (!item) throw new Error("Item not found in cart");
+  // Find the item index
+  const itemIndex = cart.items.findIndex(
+    (item) => item._id.toString() === itemId
+  );
+
+  if (itemIndex === -1) throw new Error("Item not found in cart");
 
   // Update quantity if provided
   if (updateData.quantity !== undefined) {
-    item.quantity = updateData.quantity;
+    cart.items[itemIndex].quantity = updateData.quantity;
   }
 
   // Update customizations if provided
   if (updateData.customizationNotes !== undefined) {
-    item.customizationNotes = updateData.customizationNotes;
+    cart.items[itemIndex].customizationNotes = updateData.customizationNotes;
   }
 
   await cart.save();
