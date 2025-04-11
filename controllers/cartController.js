@@ -73,7 +73,9 @@ async function clear(req, res) {
 }
 
 async function get(req, res) {
+  console.log("got here");
   try {
+    console.log(req.user);
     const { userId } = req.user;
     const cart = await cartService.getCart(userId);
     res.json({

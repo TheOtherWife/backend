@@ -98,8 +98,6 @@ const loginUser = async (email, password) => {
   const userResponse = user.toObject(); // Ensure this line is present
   delete userResponse.password; // Exclude password from the response
 
-  console.log("User data in service:", userResponse); // Log the user data for debugging
-
   return { user: userResponse, token };
 };
 
