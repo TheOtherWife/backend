@@ -13,12 +13,17 @@ const stewRoutes = require("./routes/stewRoutes");
 const cartRoutes = require("./routes/cartRoutes");
 const orderRoutes = require("./routes/orderRoutes");
 const { configureCloudinary, cloudinary } = require("./utils/cloudinary");
+const {
+  handlePayment,
+  handleVerifyTransaction,
+} = require("./controllers/paystack.js");
 
 dotenv.config();
 
 const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY;
 const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET;
+const PAY_STACK_SECRET_KEY = process.env.PAY_STACK_SECRET_KEY;
 
 // Configure Cloudinary
 configureCloudinary(
@@ -60,6 +65,14 @@ app.use("/api/package", packageRoutes);
 app.use("/api/stew", stewRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
+
+// app.use("/api/v1/paystack", pastackRoutes);
+app.post("/api/v1/paystack/create", handlePayment(PAY_STACK_SECRET_KEY));
+app.get(
+  "/api/v1/paystack/verify",
+  handleVerifyTransaction(PAY_STACK_SECRET_KEY)
+);
+// app.use(notFound);
 
 // Start server
 app.listen(PORT, () => {
