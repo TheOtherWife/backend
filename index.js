@@ -67,11 +67,8 @@ app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
 
 // app.use("/api/v1/paystack", pastackRoutes);
-app.post("/api/v1/paystack/create", handlePayment(PAY_STACK_SECRET_KEY));
-app.get(
-  "/api/v1/paystack/verify",
-  handleVerifyTransaction(PAY_STACK_SECRET_KEY)
-);
+app.post("/api/paystack/create", handlePayment(PAY_STACK_SECRET_KEY));
+app.get("/api/paystack/verify", handleVerifyTransaction(PAY_STACK_SECRET_KEY));
 // app.use(notFound);
 
 // Start server
