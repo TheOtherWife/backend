@@ -161,10 +161,20 @@ async function getOrderById(orderId) {
     .populate("vendorId", "name address phone");
 }
 
+// async function getUserOrders(userId) {
+//   return await Order.find({ userId })
+//     .sort({ createdAt: -1 })
+//     .populate("vendorId", "name");
+// }
+
 async function getUserOrders(userId) {
   return await Order.find({ userId })
     .sort({ createdAt: -1 })
-    .populate("vendorId", "name");
+    .populate("vendorId", "name")
+    .populate({
+      path: "items.menuId",
+      select: "name image", // Include both name and image
+    });
 }
 
 async function getVendorOrders(vendorId) {
