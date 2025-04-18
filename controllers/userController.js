@@ -120,6 +120,20 @@ const changePassword = async (req, res) => {
   }
 };
 
+const getUserProfile = async (req, res) => {
+  try {
+    const userId = rreq.user.userId;
+    const user = await userService.getUserById(userId);
+
+    res.status(200).json({
+      message: "User retrieved successfully",
+      user,
+    });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
 const getUser = async (req, res) => {
   try {
     const userId = req.params.id;
@@ -156,4 +170,5 @@ module.exports = {
   changePassword,
   getUser,
   getAllUsers,
+  getUserProfile,
 };

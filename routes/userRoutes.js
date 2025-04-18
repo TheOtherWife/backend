@@ -7,6 +7,7 @@ const router = express.Router();
 // User registration route
 router.post("/register", userController.registerUser);
 router.post("/login", userController.loginUser);
+router.get("/me", authMiddleware, userController.getUserProfile);
 router.post("/forgot-password", userController.forgotPassword);
 router.post("/reset-password", userController.resetPassword);
 router.put("/profile", authMiddleware, userController.updateProfile);

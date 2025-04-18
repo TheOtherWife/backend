@@ -158,7 +158,11 @@ async function assignDeliveryPerson(orderId, deliveryPersonData) {
 async function getOrderById(orderId) {
   return await Order.findById(orderId)
     .populate("userId", "name email phone")
-    .populate("vendorId", "name address phone");
+    .populate("vendorId", "name address phone")
+    .populate({
+      path: "items.menuId",
+      select: "name image", // Include both name and image
+    });
 }
 
 // async function getUserOrders(userId) {
