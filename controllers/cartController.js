@@ -23,34 +23,16 @@ async function get(req, res) {
     const { userId } = req.user;
     const cart = await cartService.getCart(userId);
 
-    // Ensure all items have names for display
-    const formattedCart = {
-      ...cart.toObject(),
-      items: cart.items.map((item) => ({
-        ...item,
-        name: item.menuId?.name || "Unknown Item",
-        additives: item.additives.map((add) => ({
-          ...add,
-          name: add.additiveId?.name || "Unknown Additive",
-        })),
-        drinks: item.drinks.map((drink) => ({
-          ...drink,
-          name: drink.drinkId?.name || "Unknown Drink",
-        })),
-        meats: item.meats.map((meat) => ({
-          ...meat,
-          name: meat.meatId?.name || "Unknown Meat",
-        })),
-        stews: item.stews.map((stew) => ({
-          ...stew,
-          name: stew.stewId?.name || "Unknown Stew",
-        })),
-      })),
-    };
+    if (!cart) {
+      return res.status(404).json({
+        success: false,
+        message: "Cart not found.",
+      });
+    }
 
     res.json({
       success: true,
-      cart: formattedCart,
+      cart: cart,
     });
   } catch (error) {
     res.status(400).json({
