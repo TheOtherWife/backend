@@ -134,36 +134,22 @@ async function addToCart(userId, cartItemData) {
     if (item.packageOptionId && !item.packageOptionId.equals(packageOptionId))
       return false;
 
+    // Helper function to compare arrays of items with counts
+    const compareItems = (arr1, arr2, idField) => {
+      if (arr1.length !== arr2.length) return false;
+      return arr1.every((item1) => {
+        const item2 = arr2.find(
+          (item2) => item1[idField].toString() === item2[idField].toString()
+        );
+        return item2 && item1.count === item2.count;
+      });
+    };
+
     // Compare additives with counts
-    if (item.additives.length !== additives.length) return false;
-    const additiveMatch = item.additives.every((itemAdd) => {
-      const newAdd = additives.find((a) =>
-        a.additiveId.equals(itemAdd.additiveId)
-      );
-      return newAdd && newAdd.count === itemAdd.count;
-    });
-    if (!additiveMatch) return false;
-
-    if (item.meats.length !== meats.length) return false;
-    const meatMatch = item.meats.every((itemAdd) => {
-      const newAdd = meats.find((a) => a.meatId.equals(itemAdd.meatId));
-      return newAdd && newAdd.count === itemAdd.count;
-    });
-    if (!meatMatch) return false;
-
-    if (item.drinks.length !== drinks.length) return false;
-    const drinkMatch = item.drinks.every((itemAdd) => {
-      const newAdd = drinks.find((a) => a.drinkId.equals(itemAdd.drinkId));
-      return newAdd && newAdd.count === itemAdd.count;
-    });
-    if (!drinkMatch) return false;
-
-    if (item.stews.length !== stews.length) return false;
-    const stewMatch = item.stews.every((itemAdd) => {
-      const newAdd = stews.find((a) => a.stewId.equals(itemAdd.stewId));
-      return newAdd && newAdd.count === itemAdd.count;
-    });
-    if (!stewMatch) return false;
+    if (!compareItems(item.additives, additives, "additiveId")) return false;
+    if (!compareItems(item.meats, meats, "meatId")) return false;
+    if (!compareItems(item.drinks, drinks, "drinkId")) return false;
+    if (!compareItems(item.stews, stews, "stewId")) return false;
 
     return true;
   });
