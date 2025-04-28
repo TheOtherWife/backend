@@ -203,18 +203,19 @@ async function updateCartItem(userId, itemId, updateData) {
 
   if (itemIndex === -1) throw new Error("Item not found in cart");
 
-  // Update quantity if provided
+  // Update fields if provided
   if (updateData.quantity !== undefined) {
     cart.items[itemIndex].quantity = updateData.quantity;
   }
 
-  // Update customizations if provided
   if (updateData.customizationNotes !== undefined) {
     cart.items[itemIndex].customizationNotes = updateData.customizationNotes;
   }
 
   await cart.save();
-  return cart;
+
+  // Return the fully populated cart
+  return await getCart(userId);
 }
 
 async function removeFromCart(userId, itemId) {
@@ -235,10 +236,22 @@ async function getCart(userId) {
   const cart = await Cart.findOne({ userId })
     .populate("items.menuId")
     .populate("items.packageOptionId")
-    .populate("items.additives")
-    .populate("items.drinks")
-    .populate("items.meats")
-    .populate("items.stews");
+    .populate({
+      path: "items.additives.additiveId",
+      model: "Additive",
+    })
+    .populate({
+      path: "items.drinks.drinkId",
+      model: "Drink",
+    })
+    .populate({
+      path: "items.meats.meatId",
+      model: "Meat",
+    })
+    .populate({
+      path: "items.stews.stewId",
+      model: "Stew",
+    });
 
   if (!cart) {
     return await findOrCreateCart(userId);
