@@ -161,6 +161,42 @@ const getAllUsers = async (req, res) => {
   }
 };
 
+const addAddress = async (req, res) => {
+  try {
+    const { userId } = req.user;
+    const updatedAddresses = await userService.addAddress(userId, req.body);
+    res.json({ success: true, addresses: updatedAddresses });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+const updateAddress = async (req, res) => {
+  try {
+    const { userId } = req.user;
+    const { addressId } = req.params;
+    const updatedAddresses = await userService.updateAddress(
+      userId,
+      addressId,
+      req.body
+    );
+    res.json({ success: true, addresses: updatedAddresses });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+const deleteAddress = async (req, res) => {
+  try {
+    const { userId } = req.user;
+    const { addressId } = req.params;
+    const updatedAddresses = await userService.deleteAddress(userId, addressId);
+    res.json({ success: true, addresses: updatedAddresses });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
@@ -171,4 +207,7 @@ module.exports = {
   getUser,
   getAllUsers,
   getUserProfile,
+  addAddress,
+  updateAddress,
+  deleteAddress,
 };

@@ -1,4 +1,5 @@
 const Vendor = require("../models/Vendor");
+const vendorWalletService = require("./vendorWalletService");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
@@ -7,6 +8,7 @@ const registerVendor = async (vendorData) => {
   const {
     firstName,
     lastName,
+    displayName,
     email,
     phoneNumber,
     alternatePhoneNumber,
@@ -21,6 +23,7 @@ const registerVendor = async (vendorData) => {
     accountName,
     bankName,
     idImage,
+    displayImage,
     certificateImage,
     password,
   } = vendorData;
@@ -200,6 +203,7 @@ const getVendors = async (filters = {}, page = 1, limit = 10) => {
     query.$or = [
       { firstName: { $regex: searchQuery, $options: "i" } },
       { lastName: { $regex: searchQuery, $options: "i" } },
+      { displayName: { $regex: searchQuery, $options: "i" } },
       { "menuItems.name": { $regex: searchQuery, $options: "i" } },
       { "menuItems.description": { $regex: searchQuery, $options: "i" } },
       { cuisineSpecifications: { $regex: searchQuery, $options: "i" } },

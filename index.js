@@ -12,6 +12,11 @@ const packageRoutes = require("./routes/packageOptionRoutes");
 const stewRoutes = require("./routes/stewRoutes");
 const cartRoutes = require("./routes/cartRoutes");
 const orderRoutes = require("./routes/orderRoutes");
+const walletRoutes = require("./routes/walletRoutes");
+const vendorWalletRoutes = require("./routes/vendorWalletRoutes");
+const mealPlanRoutes = require("./routes/mealPlanRoutes");
+
+require("./jobs/dailyPayouts");
 const { configureCloudinary, cloudinary } = require("./utils/cloudinary");
 const {
   handlePayment,
@@ -65,6 +70,9 @@ app.use("/api/package", packageRoutes);
 app.use("/api/stew", stewRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
+app.use("/api/wallet", walletRoutes);
+app.use("/api/vendorwallet", vendorWalletRoutes);
+app.use("api/meal-plan", mealPlanRoutes);
 
 // app.use("/api/v1/paystack", pastackRoutes);
 app.post("/api/paystack/create", handlePayment(PAY_STACK_SECRET_KEY));

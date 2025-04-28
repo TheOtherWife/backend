@@ -1,17 +1,18 @@
 const Order = require("../models/orderModel");
 const Cart = require("../models/cartModel");
 const Menu = require("../models/menuModel");
+const vendorWalletService = require("./vendorWalletService");
 const { v4: uuidv4 } = require("uuid");
 
 async function checkoutCart(userId, checkoutData) {
-  // Get user's cart
+  // Get user's cart with populated data
   const cart = await Cart.findOne({ userId })
     .populate("items.menuId")
     .populate("items.packageOptionId")
-    .populate("items.additives")
-    .populate("items.drinks")
-    .populate("items.meats")
-    .populate("items.stews");
+    .populate("items.additives.additiveId")
+    .populate("items.drinks.drinkId")
+    .populate("items.meats.meatId")
+    .populate("items.stews.stewId");
 
   if (!cart || cart.items.length === 0) {
     throw new Error("Cart is empty");
@@ -26,7 +27,7 @@ async function checkoutCart(userId, checkoutData) {
     throw new Error("All items must be from the same vendor");
   }
 
-  // Prepare order items with price snapshots
+  // Prepare order items with price snapshots and counts
   const orderItems = cart.items.map((item) => ({
     menuId: item.menuId._id,
     name: item.menuId.name,
@@ -38,29 +39,47 @@ async function checkoutCart(userId, checkoutData) {
         }
       : null,
     additives: item.additives.map((additive) => ({
-      id: additive._id,
-      name: additive.name,
-      price: additive.price,
+      id: additive.additiveId._id,
+      name: additive.additiveId.name,
+      price: additive.additiveId.price,
+      count: additive.count || 1,
     })),
     drinks: item.drinks.map((drink) => ({
-      id: drink._id,
-      name: drink.name,
-      price: drink.price,
+      id: drink.drinkId._id,
+      name: drink.drinkId.name,
+      price: drink.drinkId.price,
+      count: drink.count || 1,
     })),
     meats: item.meats.map((meat) => ({
-      id: meat._id,
-      name: meat.name,
-      price: meat.price,
+      id: meat.meatId._id,
+      name: meat.meatId.name,
+      price: meat.meatId.price,
+      count: meat.count || 1,
     })),
     stews: item.stews.map((stew) => ({
-      id: stew._id,
-      name: stew.name,
-      price: stew.price,
+      id: stew.stewId._id,
+      name: stew.stewId.name,
+      price: stew.stewId.price,
+      count: stew.count || 1,
     })),
     quantity: item.quantity,
     itemPrice: item.itemPrice,
     customizationNotes: item.customizationNotes,
   }));
+
+  // Wallet payment handling
+  if (checkoutData.paymentMethod === "wallet") {
+    const totalAmount =
+      cart.total + (checkoutData.deliveryFee || 0) + (checkoutData.tax || 0);
+    const { hasSufficientBalance } = await walletService.checkBalance(
+      userId,
+      totalAmount
+    );
+
+    if (!hasSufficientBalance) {
+      throw new Error("Insufficient wallet balance");
+    }
+  }
 
   // Create payment record
   const payment = {
@@ -88,6 +107,17 @@ async function checkoutCart(userId, checkoutData) {
   });
 
   await order.save();
+
+  // Process wallet payment if applicable
+  if (checkoutData.paymentMethod === "wallet") {
+    await walletService.debitWallet(
+      userId,
+      order.total,
+      `Payment for order ${order.orderNumber}`,
+      order._id.toString(),
+      { orderId: order._id }
+    );
+  }
 
   // Clear the cart after successful checkout
   await Cart.findOneAndUpdate({ userId }, { items: [], subtotal: 0, total: 0 });
@@ -123,18 +153,36 @@ async function updateOrderStatus(orderId, status) {
     "delivered",
     "cancelled",
   ];
+
   if (!validStatuses.includes(status)) {
     throw new Error("Invalid status");
   }
 
-  const order = await Order.findByIdAndUpdate(
-    orderId,
-    { status },
-    { new: true }
-  );
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-  if (!order) throw new Error("Order not found");
-  return order;
+  try {
+    const order = await Order.findByIdAndUpdate(
+      orderId,
+      { status },
+      { new: true, session }
+    );
+
+    if (!order) throw new Error("Order not found");
+
+    // Credit vendor when order is delivered
+    if (status === "delivered") {
+      await vendorWalletService.creditVendorForOrder(orderId);
+    }
+
+    await session.commitTransaction();
+    session.endSession();
+    return order;
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
+  }
 }
 
 async function assignDeliveryPerson(orderId, deliveryPersonData) {

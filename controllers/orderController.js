@@ -2,11 +2,63 @@ const orderService = require("../services/orderService");
 const vendorServices = require("../services/vendorService");
 const Order = require("../models/orderModel");
 const Vendor = require("../models/Vendor");
+const User = require("../models/User");
+const vendorWalletService = require("../services/vendorWalletService");
 
 async function checkout(req, res) {
   try {
     const { userId } = req.user;
     const checkoutData = req.body;
+
+    const user = await User.findById(userId);
+
+    // If addressId is provided, find the matching address
+    if (checkoutData.addressId) {
+      const selectedAddress = user.deliveryAddresses.id(checkoutData.addressId);
+      if (!selectedAddress) {
+        throw new Error("Address not found");
+      }
+
+      // Assign selected address to checkoutData.deliveryAddress
+      checkoutData.deliveryAddress = {
+        street: selectedAddress.addressLine1,
+        city: selectedAddress.city,
+        state: selectedAddress.state,
+        country: selectedAddress.country,
+        postalCode: "100001", // Optionally you can add this in the model
+        coordinates: {
+          lat: 6.5244, // Optional: Use geocoding API to make this dynamic
+          lng: 3.3792,
+        },
+      };
+    } else if (!checkoutData.deliveryAddress) {
+      // Fallback: use default address
+      const defaultAddress = user.deliveryAddresses.find(
+        (addr) => addr.isDefault
+      );
+      if (!defaultAddress) {
+        throw new Error(
+          "No delivery address provided and no default address found"
+        );
+      }
+
+      checkoutData.deliveryAddress = {
+        street: defaultAddress.addressLine1,
+        city: defaultAddress.city,
+        state: defaultAddress.state,
+        country: defaultAddress.country,
+        postalCode: "100001",
+        coordinates: {
+          lat: 6.5244,
+          lng: 3.3792,
+        },
+      };
+    }
+
+    // Fallback for contactPhone
+    if (!checkoutData.contactPhone) {
+      checkoutData.contactPhone = user.phoneNumber;
+    }
 
     const order = await orderService.checkoutCart(userId, checkoutData);
 
@@ -50,10 +102,18 @@ async function updateStatus(req, res) {
 
     const order = await orderService.updateOrderStatus(orderId, status);
 
+    // If order was delivered, get the transaction details
+    let transaction = null;
+    if (status === "delivered") {
+      const result = await vendorWalletService.creditVendorForOrder(orderId);
+      transaction = result.transaction;
+    }
+
     res.json({
       success: true,
       message: "Order status updated",
       order,
+      transaction,
     });
   } catch (error) {
     res.status(400).json({

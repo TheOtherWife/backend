@@ -9,10 +9,10 @@ const Stew = require("../models/stewModel");
 async function calculateItemPrice(
   menuId,
   packageOptionId,
-  additiveIds,
-  drinkIds,
-  meatIds,
-  stewIds
+  additives,
+  drinks,
+  meats,
+  stews
 ) {
   const menuItem = await Menu.findById(menuId);
   if (!menuItem) throw new Error("Menu item not found");
@@ -25,28 +25,63 @@ async function calculateItemPrice(
     if (packageOption) price += packageOption.price;
   }
 
-  // Add additives prices
-  if (additiveIds && additiveIds.length > 0) {
-    const additives = await Additive.find({ _id: { $in: additiveIds } });
-    price += additives.reduce((sum, additive) => sum + additive.price, 0);
+  // Calculate additives prices with counts
+  if (additives && additives.length > 0) {
+    const additivePrices = await Additive.find({
+      _id: { $in: additives.map((a) => a.additiveId) },
+    });
+
+    const additiveMap = new Map(
+      additivePrices.map((a) => [a._id.toString(), a.price])
+    );
+
+    price += additives.reduce((sum, additive) => {
+      return (
+        sum +
+        additiveMap.get(additive.additiveId.toString()) * (additive.count || 1)
+      );
+    }, 0);
   }
 
-  // Add drinks prices
-  if (drinkIds && drinkIds.length > 0) {
-    const drinks = await Drink.find({ _id: { $in: drinkIds } });
-    price += drinks.reduce((sum, drink) => sum + drink.price, 0);
+  // Calculate meats prices with counts
+  if (meats && meats.length > 0) {
+    const meatPrices = await Meat.find({
+      _id: { $in: meats.map((m) => m.meatId) },
+    });
+
+    const meatMap = new Map(meatPrices.map((m) => [m._id.toString(), m.price]));
+
+    price += meats.reduce((sum, meat) => {
+      return sum + meatMap.get(meat.meatId.toString()) * (meat.count || 1);
+    }, 0);
   }
 
-  // Add meats prices
-  if (meatIds && meatIds.length > 0) {
-    const meats = await Meat.find({ _id: { $in: meatIds } });
-    price += meats.reduce((sum, meat) => sum + meat.price, 0);
+  // Calculate drinks prices with counts
+  if (drinks && drinks.length > 0) {
+    const drinkPrices = await Drink.find({
+      _id: { $in: drinks.map((d) => d.drinkId) },
+    });
+
+    const drinkMap = new Map(
+      drinkPrices.map((d) => [d._id.toString(), d.price])
+    );
+
+    price += drinks.reduce((sum, drink) => {
+      return sum + drinkMap.get(drink.drinkId.toString()) * (drink.count || 1);
+    }, 0);
   }
 
-  // Add stews prices
-  if (stewIds && stewIds.length > 0) {
-    const stews = await Stew.find({ _id: { $in: stewIds } });
-    price += stews.reduce((sum, stew) => sum + stew.price, 0);
+  // Calculate stews prices with counts
+  if (stews && stews.length > 0) {
+    const stewPrices = await Stew.find({
+      _id: { $in: stews.map((s) => s.stewId) },
+    });
+
+    const stewMap = new Map(stewPrices.map((s) => [s._id.toString(), s.price]));
+
+    price += stews.reduce((sum, stew) => {
+      return sum + stewMap.get(stew.stewId.toString()) * (stew.count || 1);
+    }, 0);
   }
 
   return price;
@@ -66,15 +101,15 @@ async function addToCart(userId, cartItemData) {
     menuId,
     vendorId,
     packageOptionId,
-    additives,
-    drinks,
-    meats,
-    stews,
+    additives = [],
+    drinks = [],
+    meats = [],
+    stews = [],
     quantity,
     customizationNotes,
   } = cartItemData;
 
-  // Calculate the item price
+  // Calculate the item price with counts
   const itemPrice = await calculateItemPrice(
     menuId,
     packageOptionId,
@@ -88,24 +123,56 @@ async function addToCart(userId, cartItemData) {
   const cart = await findOrCreateCart(userId);
 
   // Check if identical item already exists in cart
-  const existingItem = cart.items.find(
-    (item) =>
-      item.menuId.equals(menuId) &&
-      (item.packageOptionId?.equals(packageOptionId) ||
-        (!item.packageOptionId && !packageOptionId)) &&
-      JSON.stringify(item.additives.map((id) => id.toString()).sort()) ===
-        JSON.stringify(additives.map((id) => id.toString()).sort()) &&
-      JSON.stringify(item.drinks.map((id) => id.toString()).sort()) ===
-        JSON.stringify(drinks.map((id) => id.toString()).sort()) &&
-      JSON.stringify(item.meats.map((id) => id.toString()).sort()) ===
-        JSON.stringify(meats.map((id) => id.toString()).sort()) &&
-      JSON.stringify(item.stews.map((id) => id.toString()).sort()) ===
-        JSON.stringify(stews.map((id) => id.toString()).sort())
-  );
+  const existingItem = cart.items.find((item) => {
+    // Basic comparison
+    if (!item.menuId.equals(menuId)) return false;
+    if (
+      (item.packageOptionId && !packageOptionId) ||
+      (!item.packageOptionId && packageOptionId)
+    )
+      return false;
+    if (item.packageOptionId && !item.packageOptionId.equals(packageOptionId))
+      return false;
+
+    // Compare additives with counts
+    if (item.additives.length !== additives.length) return false;
+    const additiveMatch = item.additives.every((itemAdd) => {
+      const newAdd = additives.find((a) =>
+        a.additiveId.equals(itemAdd.additiveId)
+      );
+      return newAdd && newAdd.count === itemAdd.count;
+    });
+    if (!additiveMatch) return false;
+
+    if (item.meats.length !== meats.length) return false;
+    const meatMatch = item.meats.every((itemAdd) => {
+      const newAdd = meats.find((a) => a.meatId.equals(itemAdd.meatId));
+      return newAdd && newAdd.count === itemAdd.count;
+    });
+    if (!meatMatch) return false;
+
+    if (item.drinks.length !== drinks.length) return false;
+    const drinkMatch = item.drinks.every((itemAdd) => {
+      const newAdd = drinks.find((a) => a.drinkId.equals(itemAdd.drinkId));
+      return newAdd && newAdd.count === itemAdd.count;
+    });
+    if (!drinkMatch) return false;
+
+    if (item.stews.length !== stews.length) return false;
+    const stewMatch = item.stews.every((itemAdd) => {
+      const newAdd = stews.find((a) => a.stewId.equals(itemAdd.stewId));
+      return newAdd && newAdd.count === itemAdd.count;
+    });
+    if (!stewMatch) return false;
+
+    return true;
+  });
 
   if (existingItem) {
     // Update quantity if same item exists
     existingItem.quantity += quantity;
+    existingItem.customizationNotes =
+      customizationNotes || existingItem.customizationNotes;
   } else {
     // Add new item to cart
     cart.items.push({

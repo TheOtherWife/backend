@@ -1,51 +1,78 @@
 const mongoose = require("mongoose");
 
-const orderItemSchema = new mongoose.Schema({
-  menuId: { type: mongoose.Schema.Types.ObjectId, ref: "Menu", required: true },
-  name: { type: String, required: true }, // Snapshot of item name at time of order
-  packageOption: {
-    id: { type: mongoose.Schema.Types.ObjectId, ref: "PackageOption" },
-    name: String,
-    price: Number,
+const additiveOrderSchema = new mongoose.Schema(
+  {
+    id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Additive",
+      required: true,
+    },
+    name: { type: String, required: true },
+    price: { type: Number, required: true },
+    count: { type: Number, default: 1, min: 1 },
   },
-  additives: [
-    {
-      id: { type: mongoose.Schema.Types.ObjectId, ref: "Additive" },
+  { _id: false }
+);
+
+const meatOrderSchema = new mongoose.Schema(
+  {
+    id: { type: mongoose.Schema.Types.ObjectId, ref: "Meat", required: true },
+    name: { type: String, required: true },
+    price: { type: Number, required: true },
+    count: { type: Number, default: 1, min: 1 },
+  },
+  { _id: false }
+);
+
+const drinkOrderSchema = new mongoose.Schema(
+  {
+    id: { type: mongoose.Schema.Types.ObjectId, ref: "Drink", required: true },
+    name: { type: String, required: true },
+    price: { type: Number, required: true },
+    count: { type: Number, default: 1, min: 1 },
+  },
+  { _id: false }
+);
+
+const stewOrderSchema = new mongoose.Schema(
+  {
+    id: { type: mongoose.Schema.Types.ObjectId, ref: "Stew", required: true },
+    name: { type: String, required: true },
+    price: { type: Number, required: true },
+    count: { type: Number, default: 1, min: 1 },
+  },
+  { _id: false }
+);
+
+const orderItemSchema = new mongoose.Schema(
+  {
+    menuId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Menu",
+      required: true,
+    },
+    name: { type: String, required: true },
+    packageOption: {
+      id: { type: mongoose.Schema.Types.ObjectId, ref: "PackageOption" },
       name: String,
       price: Number,
     },
-  ],
-  drinks: [
-    {
-      id: { type: mongoose.Schema.Types.ObjectId, ref: "Drink" },
-      name: String,
-      price: Number,
-    },
-  ],
-  meats: [
-    {
-      id: { type: mongoose.Schema.Types.ObjectId, ref: "Meat" },
-      name: String,
-      price: Number,
-    },
-  ],
-  stews: [
-    {
-      id: { type: mongoose.Schema.Types.ObjectId, ref: "Stew" },
-      name: String,
-      price: Number,
-    },
-  ],
-  quantity: { type: Number, required: true },
-  itemPrice: { type: Number, required: true },
-  customizationNotes: String,
-});
+    additives: [additiveOrderSchema],
+    meats: [meatOrderSchema],
+    drinks: [drinkOrderSchema],
+    stews: [stewOrderSchema],
+    quantity: { type: Number, required: true },
+    itemPrice: { type: Number, required: true },
+    customizationNotes: String,
+  },
+  { _id: false }
+);
 
 const paymentSchema = new mongoose.Schema({
   method: {
     type: String,
     required: true,
-    enum: ["card", "cash", "mobile_money", "bank_transfer"],
+    enum: ["card", "cash", "mobile_money", "bank_transfer", "wallet"],
   },
   status: {
     type: String,

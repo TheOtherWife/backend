@@ -5,6 +5,7 @@ const vendorSchema = new mongoose.Schema(
   {
     firstName: { type: String, required: true },
     lastName: { type: String, required: true },
+    displayName: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     phoneNumber: { type: String, required: true },
     alternatePhoneNumber: { type: String },
@@ -47,6 +48,7 @@ const vendorSchema = new mongoose.Schema(
     accountName: { type: String, required: true },
     bankName: { type: String, required: true },
     idImage: { type: String, required: true }, // File path or URL
+    displayImage: { type: String, required: true }, // File path or URL
     certificateImage: { type: String, required: true }, // File path or URL
 
     password: { type: String, select: false },
@@ -55,6 +57,17 @@ const vendorSchema = new mongoose.Schema(
     resetPasswordExpires: { type: Date },
     averageRating: { type: Number, default: 0 },
     ratingCount: { type: Number, default: 0 },
+    walletBalance: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    pendingBalance: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    lastPayoutDate: Date,
   },
   { timestamps: true }
 );

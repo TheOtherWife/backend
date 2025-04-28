@@ -10,6 +10,7 @@ const meatSchema = new mongoose.Schema({
     required: true,
   }, // Reference to the vendor
   isAvailable: { type: Boolean, default: true }, // Availability status
+  createdAt: { type: Date, default: Date.now },
 });
 
 module.exports = mongoose.model("Meat", meatSchema);

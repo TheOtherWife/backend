@@ -197,6 +197,54 @@ const getAllUsers = async () => {
   return users;
 };
 
+const addAddress = async (userId, addressData) => {
+  const user = await User.findById(userId);
+  if (!user) throw new Error("User not found");
+
+  // If it's the first address or explicitly set as default, make it default
+  if (user.deliveryAddresses.length === 0 || addressData.isDefault) {
+    user.deliveryAddresses.forEach((addr) => (addr.isDefault = false));
+    addressData.isDefault = true;
+  }
+
+  user.deliveryAddresses.push(addressData);
+  await user.save();
+  return user.deliveryAddresses;
+};
+
+const updateAddress = async (userId, addressId, updatedData) => {
+  const user = await User.findById(userId);
+  if (!user) throw new Error("User not found");
+
+  const address = user.deliveryAddresses.id(addressId);
+  if (!address) throw new Error("Address not found");
+
+  // Update fields
+  Object.assign(address, updatedData);
+
+  // Handle default switch
+  if (updatedData.isDefault) {
+    user.deliveryAddresses.forEach((addr) => {
+      addr.isDefault = addr._id.toString() === addressId;
+    });
+  }
+
+  await user.save();
+  return user.deliveryAddresses;
+};
+
+const deleteAddress = async (userId, addressId) => {
+  const user = await User.findById(userId);
+  if (!user) throw new Error("User not found");
+
+  const address = user.deliveryAddresses.id(addressId);
+  if (!address) throw new Error("Address not found");
+
+  address.remove(); // Mongoose subdocument removal
+  await user.save();
+  return user.deliveryAddresses;
+};
+
 module.exports = {
   registerUser,
   loginUser,
@@ -206,4 +254,7 @@ module.exports = {
   changePassword,
   getUserById,
   getAllUsers,
+  addAddress,
+  updateAddress,
+  deleteAddress,
 };

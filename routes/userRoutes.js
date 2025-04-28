@@ -12,6 +12,9 @@ router.post("/forgot-password", userController.forgotPassword);
 router.post("/reset-password", userController.resetPassword);
 router.put("/profile", authMiddleware, userController.updateProfile);
 router.put("/change-password", authMiddleware, userController.changePassword);
+router.post("/address", authMiddleware, userController.addAddress);
+router.put("/address/:id", authMiddleware, userController.updateAddress);
+router.delete("/address/:id", authMiddleware, userController.deleteAddress);
 router.get("/:id", userController.getUser);
 router.get("/", userController.getAllUsers);
 

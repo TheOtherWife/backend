@@ -22,6 +22,13 @@ const registerVendor = async (req, res) => {
       vendorData.certificateImage = result.secure_url;
     }
 
+    // Upload ID image if exists
+    if (req.files?.displayImage) {
+      const displayImage = req.files.displayImage[0];
+      const result = await cloudinary.uploader.upload(displayImage.path);
+      vendorData.displayImage = result.secure_url;
+    }
+
     // Call the service to register the vendor
     const vendor = await vendorService.registerVendor(vendorData);
 
@@ -38,6 +45,9 @@ const registerVendor = async (req, res) => {
     }
     if (vendorData.certificateImage) {
       await cloudinary.uploader.destroy(vendorData.certificateImage);
+    }
+    if (vendorData.displayImage) {
+      await cloudinary.uploader.destroy(vendorData.displayImage);
     }
 
     res.status(400).json({ message: error.message });

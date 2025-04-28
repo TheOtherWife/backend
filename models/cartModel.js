@@ -1,5 +1,69 @@
 const mongoose = require("mongoose");
 
+const additiveSelectionSchema = new mongoose.Schema(
+  {
+    additiveId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Additive",
+      required: true,
+    },
+    count: {
+      type: Number,
+      default: 1,
+      min: 1,
+    },
+  },
+  { _id: false }
+);
+
+const meatSelectionSchema = new mongoose.Schema(
+  {
+    meatId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Meat",
+      required: true,
+    },
+    count: {
+      type: Number,
+      default: 1,
+      min: 1,
+    },
+  },
+  { _id: false }
+);
+
+const drinkSelectionSchema = new mongoose.Schema(
+  {
+    drinkId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Drink",
+      required: true,
+    },
+    count: {
+      type: Number,
+      default: 1,
+      min: 1,
+    },
+  },
+  { _id: false }
+);
+
+const stewSelectionSchema = new mongoose.Schema(
+  {
+    stewId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Stew",
+      required: true,
+    },
+    count: {
+      type: Number,
+      default: 1,
+      min: 1,
+    },
+  },
+  { _id: false }
+);
+
 const cartItemSchema = new mongoose.Schema(
   {
     menuId: {
@@ -16,30 +80,10 @@ const cartItemSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "PackageOption",
     },
-    additives: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Additive",
-      },
-    ],
-    drinks: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Drink",
-      },
-    ],
-    meats: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Meat",
-      },
-    ],
-    stews: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Stew",
-      },
-    ],
+    additives: [additiveSelectionSchema],
+    drinks: [drinkSelectionSchema], // Same structure as meatSelectionSchema
+    meats: [meatSelectionSchema],
+    stews: [stewSelectionSchema], // Same structure as meatSelectionSchema
     quantity: {
       type: Number,
       default: 1,
