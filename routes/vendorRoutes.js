@@ -14,6 +14,7 @@ router.post(
   upload.fields([
     { name: "idImage", maxCount: 1 },
     { name: "certificateImage", maxCount: 1 },
+    { name: "displayImage", maxCount: 1 },
   ]),
   vendorController.registerVendor
 );

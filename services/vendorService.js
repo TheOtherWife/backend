@@ -1,5 +1,4 @@
 const Vendor = require("../models/Vendor");
-const vendorWalletService = require("./vendorWalletService");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
@@ -43,6 +42,7 @@ const registerVendor = async (vendorData) => {
   const vendor = new Vendor({
     firstName,
     lastName,
+    displayName,
     email,
     phoneNumber,
     alternatePhoneNumber,
@@ -58,6 +58,7 @@ const registerVendor = async (vendorData) => {
     bankName,
     idImage,
     certificateImage,
+    displayImage,
     password, // No need to hash here - the pre-save hook will handle it
   });
 

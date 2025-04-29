@@ -5,7 +5,7 @@ const vendorSchema = new mongoose.Schema(
   {
     firstName: { type: String, required: true },
     lastName: { type: String, required: true },
-    displayName: { type: String, required: true },
+    displayName: { type: String, required: false }, // Make optional
     email: { type: String, required: true, unique: true },
     phoneNumber: { type: String, required: true },
     alternatePhoneNumber: { type: String },
@@ -48,7 +48,7 @@ const vendorSchema = new mongoose.Schema(
     accountName: { type: String, required: true },
     bankName: { type: String, required: true },
     idImage: { type: String, required: true }, // File path or URL
-    displayImage: { type: String, required: true }, // File path or URL
+    displayImage: { type: String, required: false },
     certificateImage: { type: String, required: true }, // File path or URL
 
     password: { type: String, select: false },

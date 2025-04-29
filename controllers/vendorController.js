@@ -5,8 +5,10 @@ const mongoose = require("mongoose");
 const cloudinary = require("cloudinary").v2;
 
 const registerVendor = async (req, res) => {
+  let vendorData = {}; // Define vendorData at the start of the function
+
   try {
-    const vendorData = req.body;
+    vendorData = req.body;
 
     // Upload ID image if exists
     if (req.files?.idImage) {
@@ -22,7 +24,7 @@ const registerVendor = async (req, res) => {
       vendorData.certificateImage = result.secure_url;
     }
 
-    // Upload ID image if exists
+    // Upload display image if exists
     if (req.files?.displayImage) {
       const displayImage = req.files.displayImage[0];
       const result = await cloudinary.uploader.upload(displayImage.path);
@@ -40,14 +42,18 @@ const registerVendor = async (req, res) => {
     console.error("Error in registerVendor controller:", error.message);
 
     // Clean up uploaded files if registration failed
-    if (vendorData.idImage) {
-      await cloudinary.uploader.destroy(vendorData.idImage);
-    }
-    if (vendorData.certificateImage) {
-      await cloudinary.uploader.destroy(vendorData.certificateImage);
-    }
-    if (vendorData.displayImage) {
-      await cloudinary.uploader.destroy(vendorData.displayImage);
+    try {
+      if (vendorData?.idImage) {
+        await cloudinary.uploader.destroy(vendorData.idImage);
+      }
+      if (vendorData?.certificateImage) {
+        await cloudinary.uploader.destroy(vendorData.certificateImage);
+      }
+      if (vendorData?.displayImage) {
+        await cloudinary.uploader.destroy(vendorData.displayImage);
+      }
+    } catch (cleanupError) {
+      console.error("Error cleaning up uploaded files:", cleanupError.message);
     }
 
     res.status(400).json({ message: error.message });
@@ -184,6 +190,36 @@ const updateProfile = async (req, res) => {
         if (currentVendor?.idImage) {
           const publicId = currentVendor.idImage.split("/").pop().split(".")[0];
           console.log("Deleting old ID image:", publicId);
+          await cloudinary.uploader.destroy(`vendor_documents/${publicId}`);
+        }
+      } catch (uploadError) {
+        console.error("ID Image upload failed:", uploadError);
+        throw new Error("Failed to upload ID image");
+      }
+    }
+
+    // Process Display image if exists
+    if (req.files?.displayImage) {
+      try {
+        const displayImage = req.files.displayImage[0];
+        console.log("Uploading ID image...");
+        const result = await cloudinary.uploader.upload(displayImage.path, {
+          folder: "vendor_documents",
+          resource_type: "image",
+        });
+        updateData.displayImage = result.secure_url;
+        fileHandlers.displayImage = result;
+
+        // Get current vendor data
+        const currentVendor = await Vendor.findById(vendorId).select(
+          "displayImage"
+        );
+        if (currentVendor?.displayImage) {
+          const publicId = currentVendor.displayImage
+            .split("/")
+            .pop()
+            .split(".")[0];
+          console.log("Deleting old Display image:", publicId);
           await cloudinary.uploader.destroy(`vendor_documents/${publicId}`);
         }
       } catch (uploadError) {
