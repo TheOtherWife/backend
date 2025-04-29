@@ -9,6 +9,7 @@ const {
 // User routes
 router.post("/checkout", authMiddleware, orderController.checkout);
 router.get("/vendor", vendorAuthMiddleware, orderController.getVendorOrders);
+router.get("/vendor/:orderId", vendorAuthMiddleware, orderController.getOrder);
 router.get("/user", authMiddleware, orderController.getUserOrders);
 router.get("/:orderId", authMiddleware, orderController.getOrder);
 
