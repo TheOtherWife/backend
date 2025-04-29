@@ -164,9 +164,14 @@ const getAllUsers = async (req, res) => {
 const addAddress = async (req, res) => {
   try {
     const { userId } = req.user;
+    if (!userId) {
+      throw new Error("User ID is missing in the request.");
+    }
+
     const updatedAddresses = await userService.addAddress(userId, req.body);
     res.json({ success: true, addresses: updatedAddresses });
   } catch (err) {
+    console.error("Error adding address:", err);
     res.status(400).json({ success: false, message: err.message });
   }
 };
