@@ -1,6 +1,7 @@
 // services/walletService.js
 const User = require("../models/User");
 const WalletTransaction = require("../models/walletTransactionModel");
+const mongoose = require("mongoose");
 
 async function getWalletBalance(userId) {
   const user = await User.findById(userId).select("walletBalance");
