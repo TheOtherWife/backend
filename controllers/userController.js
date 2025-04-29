@@ -180,6 +180,7 @@ const updateAddress = async (req, res) => {
   try {
     const { userId } = req.user;
     const { addressId } = req.params;
+    console.log(addressId);
     const updatedAddresses = await userService.updateAddress(
       userId,
       addressId,
