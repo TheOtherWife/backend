@@ -237,12 +237,17 @@ const deleteAddress = async (userId, addressId) => {
   const user = await User.findById(userId);
   if (!user) throw new Error("User not found");
 
-  const address = user.deliveryAddresses.id(addressId);
-  if (!address) throw new Error("Address not found");
+  const addressIndex = user.deliveryAddresses.findIndex(
+    (address) => address._id.toString() === addressId
+  );
+  if (addressIndex === -1) throw new Error("Address not found");
 
-  address.remove(); // Mongoose subdocument removal
+  // Remove the address from the array using splice
+  user.deliveryAddresses.splice(addressIndex, 1);
+
+  // Save the updated user document
   await user.save();
-  return user.deliveryAddresses;
+  return user.deliveryAddresses; // Return updated addresses
 };
 
 module.exports = {
