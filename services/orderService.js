@@ -2,6 +2,7 @@ const Order = require("../models/orderModel");
 const Cart = require("../models/cartModel");
 const Menu = require("../models/menuModel");
 const vendorWalletService = require("./vendorWalletService");
+const walletService = require("./walletService");
 const { v4: uuidv4 } = require("uuid");
 
 async function checkoutCart(userId, checkoutData) {
