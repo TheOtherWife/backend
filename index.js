@@ -60,8 +60,8 @@ app.get("/", (req, res) => {
 const cors = require("cors");
 app.use(cors("*"));
 
-app.use("/api", userRoutes);
 app.use("/api/vendors", vendorRoutes);
+app.use("/api/meal-plans", mealPlanRoutes);
 app.use("/api/menu", menuRoutes);
 app.use("/api/additive", additiveRoutes);
 app.use("/api/drink", drinkRoutes);
@@ -72,7 +72,7 @@ app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/wallet", walletRoutes);
 app.use("/api/vendorwallet", vendorWalletRoutes);
-app.use("api/meal-plans", mealPlanRoutes);
+app.use("/api", userRoutes);
 
 // app.use("/api/v1/paystack", pastackRoutes);
 app.post("/api/paystack/create", handlePayment(PAY_STACK_SECRET_KEY));
