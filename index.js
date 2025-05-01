@@ -72,7 +72,7 @@ app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/wallet", walletRoutes);
 app.use("/api/vendorwallet", vendorWalletRoutes);
-app.use("api/meal-plan", mealPlanRoutes);
+app.use("api/meal-plans", mealPlanRoutes);
 
 // app.use("/api/v1/paystack", pastackRoutes);
 app.post("/api/paystack/create", handlePayment(PAY_STACK_SECRET_KEY));
