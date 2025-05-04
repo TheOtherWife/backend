@@ -1,6 +1,7 @@
 const { https } = require("node:https");
 
 const handlePayment = (PAY_STACK_SECRET_KEY) => async (req, res) => {
+  console.log("wallet called");
   const { amount, email } = req.body;
   try {
     const params = JSON.stringify({
