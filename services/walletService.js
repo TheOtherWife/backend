@@ -9,7 +9,6 @@ async function getWalletBalance(userId) {
 
   return {
     balance: user.walletBalance,
-    x,
   };
 }
 

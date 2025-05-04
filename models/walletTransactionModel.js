@@ -1,5 +1,6 @@
 // models/walletTransactionModel.js
 const mongoose = require("mongoose");
+const mongoosePaginate = require("mongoose-paginate-v2");
 
 const walletTransactionSchema = new mongoose.Schema(
   {
@@ -41,5 +42,7 @@ const walletTransactionSchema = new mongoose.Schema(
 walletTransactionSchema.index({ userId: 1 });
 walletTransactionSchema.index({ reference: 1 });
 walletTransactionSchema.index({ createdAt: -1 });
+
+walletTransactionSchema.plugin(mongoosePaginate);
 
 module.exports = mongoose.model("WalletTransaction", walletTransactionSchema);
