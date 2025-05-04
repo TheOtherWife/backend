@@ -35,6 +35,7 @@ const handlePayment = (PAY_STACK_SECRET_KEY) => async (req, res) => {
         });
       })
       .on("error", (error) => {
+        console.log(error);
         res.send(error);
       });
 
