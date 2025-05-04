@@ -1,4 +1,4 @@
-const { https } = require("node:https");
+const https = require("https");
 
 const handlePayment = (PAY_STACK_SECRET_KEY) => async (req, res) => {
   console.log("wallet called");
