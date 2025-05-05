@@ -11,7 +11,7 @@ const handlePayment = (PAY_STACK_SECRET_KEY) => async (req, res) => {
   try {
     const params = JSON.stringify({
       email: email,
-      amount: amount * 100,
+      amount: amount,
       callback_url: "https://farmyapp.com",
     });
 

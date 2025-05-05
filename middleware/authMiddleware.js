@@ -1,7 +1,6 @@
 const jwt = require("jsonwebtoken");
 
 const authMiddleware = (req, res, next) => {
-  console.log("got here");
   try {
     // Get the token from the Authorization header
     const token = req.headers.authorization?.split(" ")[1]; // Format: "Bearer <token>"
