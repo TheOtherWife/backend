@@ -122,7 +122,7 @@ const changePassword = async (req, res) => {
 
 const getUserProfile = async (req, res) => {
   try {
-    const userId = rreq.user.userId;
+    const userId = req.user.userId;
     const user = await userService.getUserById(userId);
 
     res.status(200).json({
