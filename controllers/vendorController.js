@@ -324,7 +324,6 @@ const getVendor = async (req, res) => {
   }
 };
 
-// In your vendorController.js
 const getVendors = async (req, res) => {
   try {
     const {
@@ -339,19 +338,17 @@ const getVendors = async (req, res) => {
       limit = 24,
     } = req.query;
 
-    const result = await getVendors(
-      {
-        searchQuery,
-        minPrice,
-        maxPrice,
-        preparationType,
-        minRating,
-        category,
-        location,
-      },
-      Number(page),
-      Number(limit)
-    );
+    const result = await vendorService.getVendors({
+      searchQuery,
+      minPrice,
+      maxPrice,
+      preparationType,
+      minRating,
+      category,
+      location,
+      page: Number(page),
+      limit: Number(limit),
+    });
 
     res.status(200).json({
       message: "Vendors retrieved successfully",
@@ -364,7 +361,7 @@ const getVendors = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Error fetching vendors:", error);
+    console.error("Error in getVendors controller:", error);
     res.status(500).json({
       message: "Error fetching vendors",
       error: error.message,
