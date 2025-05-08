@@ -217,7 +217,7 @@ const getVendors = async (filters = {}, page = 1, limit = 24) => {
   }
 
   // Category filter
-  if (category && category !== "All Meal") {
+  if (category && category !== "All") {
     vendorQuery.cuisineSpecifications = { $regex: category, $options: "i" };
   }
 
@@ -231,65 +231,65 @@ const getVendors = async (filters = {}, page = 1, limit = 24) => {
     { $match: vendorQuery },
     {
       $lookup: {
-        from: "menus",
+        from: "menus", // Verify this matches your actual collection name
         localField: "_id",
-        foreignField: "vendorId",
+        foreignField: "vendorId", // Verify this field name
         as: "menuItems",
       },
     },
-    { $unwind: { path: "$menuItems", preserveNullAndEmptyArrays: true } },
+    // Only unwind if you want to filter menu items
+    { $unwind: "$menuItems" },
+
+    // Add match stages for menu item filters
   ];
 
-  // Menu item filters
-  const menuItemFilters = {};
-
-  // Price filter
+  // Menu item price filter
   if (minPrice || maxPrice) {
-    menuItemFilters["menuItems.basePrice"] = {};
+    const priceMatch = {};
     if (minPrice)
-      menuItemFilters["menuItems.basePrice"].$gte = Number(minPrice);
+      priceMatch["menuItems.basePrice"] = { $gte: Number(minPrice) };
     if (maxPrice)
-      menuItemFilters["menuItems.basePrice"].$lte = Number(maxPrice);
+      priceMatch["menuItems.basePrice"] = { $lte: Number(maxPrice) };
+    pipeline.push({ $match: priceMatch });
   }
 
   // Preparation type filter
   if (preparationType) {
-    menuItemFilters["menuItems.preparationType"] = {
-      $in: preparationType.split(","),
-    };
+    pipeline.push({
+      $match: {
+        "menuItems.preparationType": { $in: preparationType.split(",") },
+      },
+    });
   }
 
-  // Add menu item filters if any exist
-  if (Object.keys(menuItemFilters).length > 0) {
-    pipeline.push({ $match: menuItemFilters });
-  }
-
-  // Reconstruct vendors with filtered menu items
+  // Group back to reconstruct vendors
   pipeline.push({
     $group: {
       _id: "$_id",
-      doc: { $first: "$$ROOT" },
+      vendor: { $first: "$$ROOT" },
       menuItems: { $push: "$menuItems" },
     },
   });
 
-  // Reshape document
+  // Project to reshape the document
   pipeline.push({
     $replaceRoot: {
       newRoot: {
-        $mergeObjects: ["$doc", { menuItems: "$menuItems" }],
+        $mergeObjects: ["$vendor", { menuItems: "$menuItems" }],
       },
     },
   });
 
-  // Pagination
+  // Count total before pagination
+  const countPipeline = [...pipeline];
+  countPipeline.push({ $count: "total" });
+  const countResult = await Vendor.aggregate(countPipeline);
+  const totalVendors = countResult[0]?.total || 0;
+
+  // Add pagination
   pipeline.push({ $skip: (page - 1) * limit }, { $limit: limit });
 
-  // Execute aggregation
   const vendors = await Vendor.aggregate(pipeline);
-
-  // Get total count (simplified count without menu item filters)
-  const totalVendors = await Vendor.countDocuments(vendorQuery);
 
   return {
     vendors,
