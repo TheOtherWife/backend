@@ -184,24 +184,23 @@ const getVendorById = async (vendorId) => {
 };
 
 // vendorService.js
-const getVendors = async (filters = {}, page = 1, limit = 10) => {
+const getVendors = async (filters = {}, page = 1, limit = 24) => {
   const {
-    location,
-    name,
-    cuisine,
+    searchQuery,
     minPrice,
     maxPrice,
     preparationType,
     minRating,
     category,
-    searchQuery,
+    location,
   } = filters;
 
-  const query = {};
+  // Base query for vendor filtering
+  const vendorQuery = {};
 
-  // Search by multiple fields if searchQuery is provided
+  // Search filter
   if (searchQuery) {
-    query.$or = [
+    vendorQuery.$or = [
       { firstName: { $regex: searchQuery, $options: "i" } },
       { lastName: { $regex: searchQuery, $options: "i" } },
       { displayName: { $regex: searchQuery, $options: "i" } },
@@ -209,63 +208,63 @@ const getVendors = async (filters = {}, page = 1, limit = 10) => {
     ];
   }
 
-  // Location filter (city or state)
+  // Location filter
   if (location) {
-    query.$or = [
+    vendorQuery.$or = [
       { city: { $regex: location, $options: "i" } },
       { state: { $regex: location, $options: "i" } },
     ];
   }
 
-  // Category filter (cuisine type)
-  if (category) {
-    query.cuisineSpecifications = { $regex: category, $options: "i" };
+  // Category filter
+  if (category && category !== "All Meal") {
+    vendorQuery.cuisineSpecifications = { $regex: category, $options: "i" };
   }
 
   // Rating filter
   if (minRating) {
-    query.averageRating = { $gte: Number(minRating) };
+    vendorQuery.averageRating = { $gte: Number(minRating) };
   }
 
-  // Calculate skip value for pagination
-  const skip = (page - 1) * limit;
-
-  // Build the aggregation pipeline
+  // Build aggregation pipeline
   const pipeline = [
-    { $match: query },
+    { $match: vendorQuery },
     {
       $lookup: {
-        from: "menus", // This should match your Menu collection name
+        from: "menus",
         localField: "_id",
         foreignField: "vendorId",
         as: "menuItems",
       },
     },
-    // Unwind to filter menu items
     { $unwind: { path: "$menuItems", preserveNullAndEmptyArrays: true } },
-    // Add match stage for menu item filters if needed
   ];
 
-  // Add price range filter if specified
+  // Menu item filters
+  const menuItemFilters = {};
+
+  // Price filter
   if (minPrice || maxPrice) {
-    const priceMatch = {};
+    menuItemFilters["menuItems.basePrice"] = {};
     if (minPrice)
-      priceMatch["menuItems.basePrice"] = { $gte: Number(minPrice) };
+      menuItemFilters["menuItems.basePrice"].$gte = Number(minPrice);
     if (maxPrice)
-      priceMatch["menuItems.basePrice"] = { $lte: Number(maxPrice) };
-    pipeline.push({ $match: priceMatch });
+      menuItemFilters["menuItems.basePrice"].$lte = Number(maxPrice);
   }
 
-  // Add preparation type filter if specified
+  // Preparation type filter
   if (preparationType) {
-    pipeline.push({
-      $match: {
-        "menuItems.preparationType": { $in: preparationType.split(",") },
-      },
-    });
+    menuItemFilters["menuItems.preparationType"] = {
+      $in: preparationType.split(","),
+    };
   }
 
-  // Group back to reconstruct vendors with filtered menu items
+  // Add menu item filters if any exist
+  if (Object.keys(menuItemFilters).length > 0) {
+    pipeline.push({ $match: menuItemFilters });
+  }
+
+  // Reconstruct vendors with filtered menu items
   pipeline.push({
     $group: {
       _id: "$_id",
@@ -274,7 +273,7 @@ const getVendors = async (filters = {}, page = 1, limit = 10) => {
     },
   });
 
-  // Project to reshape the document
+  // Reshape document
   pipeline.push({
     $replaceRoot: {
       newRoot: {
@@ -283,15 +282,14 @@ const getVendors = async (filters = {}, page = 1, limit = 10) => {
     },
   });
 
-  // Add pagination
-  pipeline.push({ $skip: skip }, { $limit: limit });
+  // Pagination
+  pipeline.push({ $skip: (page - 1) * limit }, { $limit: limit });
 
   // Execute aggregation
   const vendors = await Vendor.aggregate(pipeline);
 
-  // Get total count (need a separate count query due to aggregation complexity)
-  const countQuery = { ...query };
-  const totalVendors = await Vendor.countDocuments(countQuery);
+  // Get total count (simplified count without menu item filters)
+  const totalVendors = await Vendor.countDocuments(vendorQuery);
 
   return {
     vendors,

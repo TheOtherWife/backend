@@ -327,9 +327,8 @@ const getVendor = async (req, res) => {
 // In your vendorController.js
 const getVendors = async (req, res) => {
   try {
-    // Extract query parameters
     const {
-      searchQuery, // Changed from 'search' to match frontend
+      searchQuery,
       minPrice,
       maxPrice,
       preparationType,
@@ -340,50 +339,36 @@ const getVendors = async (req, res) => {
       limit = 24,
     } = req.query;
 
-    const query = {};
-
-    // Search filter
-    if (searchQuery) {
-      query.$or = [
-        { firstName: { $regex: searchQuery, $options: "i" } },
-        { lastName: { $regex: searchQuery, $options: "i" } },
-        { "menuItems.name": { $regex: searchQuery, $options: "i" } },
-        { cuisineSpecifications: { $regex: searchQuery, $options: "i" } },
-      ];
-    }
-
-    // Location filter
-    if (location) {
-      query.$or = [
-        { city: { $regex: location, $options: "i" } },
-        { state: { $regex: location, $options: "i" } },
-      ];
-    }
-
-    // Category filter
-    if (category) {
-      query.cuisineSpecifications = { $regex: category, $options: "i" };
-    }
-
-    // Get vendors (without additional filters for now)
-    const vendors = await Vendor.find(query)
-      .skip((page - 1) * limit)
-      .limit(limit);
-
-    const totalVendors = await Vendor.countDocuments(query);
+    const result = await getVendors(
+      {
+        searchQuery,
+        minPrice,
+        maxPrice,
+        preparationType,
+        minRating,
+        category,
+        location,
+      },
+      Number(page),
+      Number(limit)
+    );
 
     res.status(200).json({
       message: "Vendors retrieved successfully",
-      vendors,
+      vendors: result.vendors,
       pagination: {
-        totalVendors,
-        totalPages: Math.ceil(totalVendors / limit),
-        currentPage: Number(page),
+        totalVendors: result.totalVendors,
+        totalPages: result.totalPages,
+        currentPage: result.currentPage,
         limit: Number(limit),
       },
     });
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    console.error("Error fetching vendors:", error);
+    res.status(500).json({
+      message: "Error fetching vendors",
+      error: error.message,
+    });
   }
 };
 
