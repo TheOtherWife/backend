@@ -205,8 +205,6 @@ const getVendors = async (filters = {}, page = 1, limit = 10) => {
       { firstName: { $regex: searchQuery, $options: "i" } },
       { lastName: { $regex: searchQuery, $options: "i" } },
       { displayName: { $regex: searchQuery, $options: "i" } },
-      { "menuItems.name": { $regex: searchQuery, $options: "i" } },
-      { "menuItems.description": { $regex: searchQuery, $options: "i" } },
       { cuisineSpecifications: { $regex: searchQuery, $options: "i" } },
     ];
   }
@@ -224,18 +222,6 @@ const getVendors = async (filters = {}, page = 1, limit = 10) => {
     query.cuisineSpecifications = { $regex: category, $options: "i" };
   }
 
-  // Price range filter (assuming vendors have menu items with prices)
-  if (minPrice || maxPrice) {
-    query["menuItems.price"] = {};
-    if (minPrice) query["menuItems.price"].$gte = Number(minPrice);
-    if (maxPrice) query["menuItems.price"].$lte = Number(maxPrice);
-  }
-
-  // Preparation type filter
-  if (preparationType) {
-    query["menuItems.preparationType"] = { $in: preparationType.split(",") };
-  }
-
   // Rating filter
   if (minRating) {
     query.averageRating = { $gte: Number(minRating) };
@@ -244,28 +230,68 @@ const getVendors = async (filters = {}, page = 1, limit = 10) => {
   // Calculate skip value for pagination
   const skip = (page - 1) * limit;
 
-  // Fetch vendors with their menu items and apply aggregation for filtering
-  const vendors = await Vendor.aggregate([
+  // Build the aggregation pipeline
+  const pipeline = [
     { $match: query },
-    { $skip: skip },
-    { $limit: limit },
     {
       $lookup: {
-        from: "menuitems", // Assuming you have a MenuItem collection
+        from: "menus", // This should match your Menu collection name
         localField: "_id",
-        foreignField: "vendor",
+        foreignField: "vendorId",
         as: "menuItems",
       },
     },
-    {
-      $addFields: {
-        averageRating: { $avg: "$reviews.rating" }, // Calculate average rating
+    // Unwind to filter menu items
+    { $unwind: { path: "$menuItems", preserveNullAndEmptyArrays: true } },
+    // Add match stage for menu item filters if needed
+  ];
+
+  // Add price range filter if specified
+  if (minPrice || maxPrice) {
+    const priceMatch = {};
+    if (minPrice)
+      priceMatch["menuItems.basePrice"] = { $gte: Number(minPrice) };
+    if (maxPrice)
+      priceMatch["menuItems.basePrice"] = { $lte: Number(maxPrice) };
+    pipeline.push({ $match: priceMatch });
+  }
+
+  // Add preparation type filter if specified
+  if (preparationType) {
+    pipeline.push({
+      $match: {
+        "menuItems.preparationType": { $in: preparationType.split(",") },
+      },
+    });
+  }
+
+  // Group back to reconstruct vendors with filtered menu items
+  pipeline.push({
+    $group: {
+      _id: "$_id",
+      doc: { $first: "$$ROOT" },
+      menuItems: { $push: "$menuItems" },
+    },
+  });
+
+  // Project to reshape the document
+  pipeline.push({
+    $replaceRoot: {
+      newRoot: {
+        $mergeObjects: ["$doc", { menuItems: "$menuItems" }],
       },
     },
-  ]);
+  });
 
-  // Get total count of vendors (for pagination metadata)
-  const totalVendors = await Vendor.countDocuments(query);
+  // Add pagination
+  pipeline.push({ $skip: skip }, { $limit: limit });
+
+  // Execute aggregation
+  const vendors = await Vendor.aggregate(pipeline);
+
+  // Get total count (need a separate count query due to aggregation complexity)
+  const countQuery = { ...query };
+  const totalVendors = await Vendor.countDocuments(countQuery);
 
   return {
     vendors,

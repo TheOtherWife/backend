@@ -29,7 +29,7 @@ const vendorSchema = new mongoose.Schema(
     },
     yearsOfExperience: { type: Number, required: true },
     cuisineSpecifications: {
-      type: String,
+      type: [String],
       enum: [
         "Local",
         "Continental",
