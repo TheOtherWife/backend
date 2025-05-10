@@ -29,7 +29,7 @@ const vendorSchema = new mongoose.Schema(
     },
     yearsOfExperience: { type: Number, required: true },
     cuisineSpecifications: {
-      type: [String],
+      type: [String], // Changed to array of strings
       enum: [
         "Local",
         "Continental",
@@ -42,6 +42,12 @@ const vendorSchema = new mongoose.Schema(
         "Other",
       ],
       required: true,
+      validate: {
+        validator: function (value) {
+          return value.length > 0; // Ensure at least one cuisine is selected
+        },
+        message: "At least one cuisine specification is required",
+      },
     },
     bvn: { type: String, required: true },
     accountNumber: { type: String, required: true },
