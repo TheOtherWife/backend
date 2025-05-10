@@ -29,24 +29,14 @@ const vendorSchema = new mongoose.Schema(
     },
     yearsOfExperience: { type: Number, required: true },
     cuisineSpecifications: {
-      type: [String], // Changed to array of strings
-      enum: [
-        "Local",
-        "Continental",
-        "Vegan",
-        "African",
-        "Asian",
-        "European",
-        "American",
-        "Fusion",
-        "Other",
-      ],
-      required: true,
+      type: [String],
       validate: {
-        validator: function (value) {
-          return value.length > 0; // Ensure at least one cuisine is selected
+        validator: function (arr) {
+          const allowed = ["Local", "Continental", "Vegan", "Others"];
+          return arr.every((item) => allowed.includes(item));
         },
-        message: "At least one cuisine specification is required",
+        message: (props) =>
+          `${props.value} contains an invalid cuisine. Allowed values: Local, Continental, Vegan, Others.`,
       },
     },
     bvn: { type: String, required: true },
