@@ -2,6 +2,7 @@ const Vendor = require("../models/Vendor");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
+const { sendEmail } = require("./emailService");
 
 const registerVendor = async (vendorData) => {
   const {
@@ -64,6 +65,14 @@ const registerVendor = async (vendorData) => {
 
   // Save the vendor to the database
   await vendor.save();
+  await sendEmail({
+    to: vendor.email,
+    subject: "Welcome to TOW – Let’s Get Your Kitchen Verified!",
+    templateName: "welcome_vendor_email",
+    variables: {
+      FNAME: vendor.firstName,
+    },
+  });
 
   // Exclude sensitive fields from the response
   const vendorResponse = vendor.toObject();
@@ -114,18 +123,30 @@ const forgotPassword = async (email) => {
     throw new Error("Vendor not found");
   }
 
-  // Generate a reset token
-  const resetToken = crypto.randomBytes(20).toString("hex");
+  // Generate a raw token
+  const rawToken = crypto.randomBytes(20).toString("hex");
+
+  // Hash it for storing
   vendor.resetPasswordToken = crypto
     .createHash("sha256")
-    .update(resetToken)
+    .update(rawToken)
     .digest("hex");
-  vendor.resetPasswordExpires = Date.now() + 3600000; // 1 hour
+  vendor.resetPasswordExpires = Date.now() + 3600000;
 
   await vendor.save();
 
-  // In a real app, send the token via email
-  return resetToken;
+  // Send email with raw token (the one vendor will use)
+  await sendEmail({
+    to: vendor.email,
+    subject: "Reset Your Password - TheOtherWife Vendor Account",
+    templateName: "forgot_password_vendor_email",
+    variables: {
+      FNAME: vendor.firstName,
+      RESET_CODE: rawToken,
+    },
+  });
+
+  return true;
 };
 
 const changePassword = async (vendorId, currentPassword, newPassword) => {

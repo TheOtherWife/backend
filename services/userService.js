@@ -2,6 +2,7 @@ const User = require("../models/User");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const bcrypt = require("bcrypt");
+const { sendEmail } = require("./emailService");
 
 const registerUser = async (userData) => {
   try {
@@ -71,6 +72,16 @@ const registerUser = async (userData) => {
     const userResponse = user.toObject();
     delete userResponse.password;
 
+    await sendEmail({
+      to: user.email,
+      subject:
+        "Welcome to TheOtherWife – Your Comfort Food Journey Starts Here!",
+      templateName: "welcome_user_email",
+      variables: {
+        FNAME: user.firstName,
+      },
+    });
+
     return userResponse;
   } catch (error) {
     console.error("Error in registerUser service:", error.message);
@@ -113,9 +124,18 @@ const forgotPassword = async (email) => {
   user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
 
   await user.save();
+  // Send reset code via email
+  await sendEmail({
+    to: user.email,
+    subject: "Reset Your Password - TheOtherWife",
+    templateName: "forgot_password_user_email",
+    variables: {
+      FNAME: user.firstName,
+      RESET_CODE: resetToken,
+    },
+  });
 
-  // In a real app, send the token via email
-  return resetToken;
+  return true;
 };
 
 const resetPassword = async (token, newPassword) => {

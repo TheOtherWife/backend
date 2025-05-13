@@ -57,11 +57,11 @@ const loginUser = async (req, res) => {
 const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
-    const resetToken = await userService.forgotPassword(email);
+    await userService.forgotPassword(email);
 
     res.status(200).json({
-      message: "Password reset token sent",
-      resetToken, // In production, send this via email
+      message:
+        "If the email exists, a reset code has been sent. Please check your inbox.",
     });
   } catch (error) {
     res.status(400).json({ message: error.message });
