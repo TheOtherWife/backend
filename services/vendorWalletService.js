@@ -3,6 +3,7 @@
 const Vendor = require("../models/Vendor");
 const VendorTransaction = require("../models/vendorTransactionModel");
 const Order = require("../models/orderModel");
+const mongoose = require("mongoose");
 
 async function creditVendorForOrder(orderId) {
   const session = await mongoose.startSession();

@@ -1,10 +1,10 @@
 const Order = require("../models/orderModel");
 const Cart = require("../models/cartModel");
-const mongoose = require("mongoose");
 const Menu = require("../models/menuModel");
 const vendorWalletService = require("./vendorWalletService");
 const walletService = require("./walletService");
 const { v4: uuidv4 } = require("uuid");
+const mongoose = require("mongoose");
 
 async function checkoutCart(userId, checkoutData) {
   // Get user's cart with populated data
@@ -161,29 +161,32 @@ async function updateOrderStatus(orderId, status) {
   }
 
   const session = await mongoose.startSession();
-  session.startTransaction();
+  console.log("Session started", session); // ✅ Start the session
 
   try {
+    await session.startTransaction(); // ✅ Begin the transaction
+
     const order = await Order.findByIdAndUpdate(
       orderId,
       { status },
       { new: true, session }
     );
 
-    if (!order) throw new Error("Order not found");
+    if (!order) {
+      throw new Error("Order not found");
+    }
 
-    // Credit vendor when order is delivered
     if (status === "delivered") {
-      await vendorWalletService.creditVendorForOrder(orderId);
+      await vendorWalletService.creditVendorForOrder(orderId, { session });
     }
 
     await session.commitTransaction();
-    session.endSession();
     return order;
   } catch (error) {
     await session.abortTransaction();
-    session.endSession();
     throw error;
+  } finally {
+    session.endSession(); // ✅ End the session
   }
 }
 
