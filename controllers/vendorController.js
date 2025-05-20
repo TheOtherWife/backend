@@ -1,6 +1,7 @@
 const vendorService = require("../services/vendorService");
 const Vendor = require("../models/Vendor"); // ADD THIS LINE
 const mongoose = require("mongoose");
+const vendorStatsService = require("../services/vendorStatsService");
 
 const cloudinary = require("cloudinary").v2;
 
@@ -310,17 +311,51 @@ const updateProfile = async (req, res) => {
   }
 };
 
+// const getVendor = async (req, res) => {
+//   try {
+//     const vendorId = req.params.id;
+//     const vendor = await vendorService.getVendorById(vendorId);
+
+//     res.status(200).json({
+//       message: "Vendor retrieved successfully",
+//       vendor,
+//     });
+//   } catch (error) {
+//     res.status(400).json({ message: error.message });
+//   }
+// };
+
+const testStats = async (req, res) => {
+  try {
+    const vendorId = req.params.id;
+    const stats = await vendorStatsService.getVendorStats(vendorId);
+    res.status(200).json(stats);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 const getVendor = async (req, res) => {
   try {
     const vendorId = req.params.id;
-    const vendor = await vendorService.getVendorById(vendorId);
+    const includeStats = "true"; // Correct evaluation
+
+    // console.log(
+    //   `Request received for vendor ${vendorId}, includeStats: ${includeStats}`
+    // );
+
+    const vendor = await vendorService.getVendorById(vendorId, includeStats);
 
     res.status(200).json({
       message: "Vendor retrieved successfully",
-      vendor,
+      vendor: vendor,
     });
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    console.error("Error in getVendor:", error);
+    res.status(500).json({
+      message: error.message,
+      stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
+    });
   }
 };
 
@@ -369,6 +404,70 @@ const getVendors = async (req, res) => {
   }
 };
 
+const getVendorDashboardStats = async (req, res) => {
+  try {
+    const vendorId = req.vendor._id;
+    const stats = await vendorStatsService.getVendorStats(vendorId);
+    res.status(200).json(stats);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const getVendorEarnings = async (req, res) => {
+  try {
+    const vendorId = req.vendor._id;
+    const days = parseInt(req.query.days) || 30;
+    const earnings = await vendorStatsService.getVendorEarningsHistory(
+      vendorId,
+      days
+    );
+    res.status(200).json(earnings);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// const updateOrderStatus = async (req, res) => {
+//   try {
+//     const order = await Order.findByIdAndUpdate(
+//       req.params.id,
+//       { status: req.body.status },
+//       { new: true }
+//     );
+
+//     // Emit real-time update to vendor
+//     io.to(`vendor-${order.vendorId}`).emit("order-updated", {
+//       orderId: order._id,
+//       newStatus: order.status,
+//     });
+
+//     res.status(200).json(order);
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// };
+
+const getVendorProfile = async (req, res) => {
+  try {
+    const vendorId = req.vendor._id;
+    const includeStats = req.query.stats === "true";
+
+    const vendor = await vendorService.getVendorById(vendorId, includeStats);
+
+    res.status(200).json({
+      message: "Vendor retrieved successfully",
+      vendor: vendor,
+    });
+  } catch (error) {
+    console.error("Error in getVendorProfile:", error);
+    res.status(500).json({
+      message: error.message,
+      error: process.env.NODE_ENV === "development" ? error.stack : undefined,
+    });
+  }
+};
+
 module.exports = {
   registerVendor,
   loginVendor,
@@ -377,4 +476,8 @@ module.exports = {
   updateProfile,
   getVendor,
   getVendors,
+  getVendorDashboardStats,
+  getVendorEarnings,
+  testStats,
+  getVendorProfile,
 };

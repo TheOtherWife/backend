@@ -24,6 +24,8 @@ router.post("/login", vendorController.loginVendor);
 
 // Forgot password
 router.post("/forgot-password", vendorController.forgotPassword);
+router.get("/dashboard/stats", vendorController.getVendorDashboardStats);
+router.get("/earnings/history", vendorController.getVendorEarnings);
 
 // Change password
 router.put(
@@ -45,7 +47,11 @@ router.put(
   vendorController.updateProfile
 );
 
+router.get("/profile", vendorAuthMiddleware, vendorController.getVendorProfile);
+
 // Get a vendor by ID
 router.get("/:id", vendorController.getVendor);
+
+router.get("/test-stats/:id", vendorController.testStats);
 
 module.exports = router;

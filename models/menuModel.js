@@ -9,6 +9,7 @@ const menuSchema = new mongoose.Schema({
     ref: "Vendor",
     required: true,
   }, // Reference to the vendor
+  preparationType: { type: String },
   packageOptions: [
     { type: mongoose.Schema.Types.ObjectId, ref: "PackageOption" },
   ], // Available package options for this meal

@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const bcrypt = require("bcrypt");
 const { sendEmail } = require("./emailService");
+const { loadTemplate } = require("../utils/emailTemplateLoader");
 
 const registerUser = async (userData) => {
   try {
@@ -66,20 +67,35 @@ const registerUser = async (userData) => {
     });
 
     // Save the user to the database
+    // Save the user to the database
     await user.save();
+
+    // Add user to Mailchimp list
+    await mailchimp.lists.addListMember(LIST_ID, {
+      email_address: email,
+      status: "subscribed", // This means they will get emails immediately
+      merge_fields: {
+        FNAME: firstName,
+        LNAME: lastName,
+      },
+    });
 
     // Exclude password from the response
     const userResponse = user.toObject();
     delete userResponse.password;
 
+    // Load email template
+    const htmlContent = loadTemplate("welcome_user_email", {
+      FNAME: user.firstName,
+    });
+
+    // Send email
     await sendEmail({
-      to: user.email,
       subject:
         "Welcome to TheOtherWife – Your Comfort Food Journey Starts Here!",
-      templateName: "welcome_user_email",
-      variables: {
-        FNAME: user.firstName,
-      },
+      fromName: "TheOtherWife",
+      replyTo: "ayotundeolaiya@gmail.com",
+      htmlContent,
     });
 
     return userResponse;

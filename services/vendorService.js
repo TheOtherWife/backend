@@ -3,6 +3,8 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const { sendEmail } = require("./emailService");
+const mongoose = require("mongoose");
+const vendorStatsService = require("./vendorStatsService");
 
 const registerVendor = async (vendorData) => {
   const {
@@ -194,17 +196,59 @@ const updateProfile = async (vendorId, updateData) => {
   return vendor;
 };
 
-const getVendorById = async (vendorId) => {
-  const vendor = await Vendor.findById(vendorId).select(
-    "-password -bvn -accountNumber"
-  );
+// const getVendorById = async (vendorId, includeStats = false) => {
+//   const vendor = await Vendor.findById(vendorId)
+//     .select("-password -bvn -accountNumber")
+//     .lean(); // Add .lean() to convert to plain JS object
+
+//   if (!vendor) {
+//     throw new Error("Vendor not found");
+//   }
+
+//   if (includeStats) {
+//     const stats = await vendorStatsService.getVendorStats(vendorId);
+//     return {
+//       ...vendor,
+//       stats, // Include stats as a nested object
+//     };
+//   }
+
+//   return vendor;
+// };
+
+const getVendorById = async (vendorId, includeStats = false) => {
+  // First get the vendor without stats
+  const vendor = await Vendor.findById(vendorId)
+    .select("-password -bvn -accountNumber")
+    .lean()
+    .exec();
+
   if (!vendor) {
     throw new Error("Vendor not found");
   }
-  return vendor;
+
+  // If stats aren't requested, return early
+  if (!includeStats) {
+    return vendor;
+  }
+
+  // Get stats separately
+  const stats = await vendorStatsService.getVendorStats(vendorId);
+
+  // Create a new plain JavaScript object
+  const result = {
+    ...vendor,
+    stats: {
+      ...stats,
+    },
+  };
+
+  // Debug log to verify merging worked
+  console.log("Merged vendor with stats:", JSON.stringify(result, null, 2));
+
+  return result;
 };
 
-// vendorService.js
 const getVendors = async (filters = {}, page = 1, limit = 24) => {
   const {
     searchQuery,
