@@ -160,33 +160,54 @@ async function updateOrderStatus(orderId, status) {
     throw new Error("Invalid status");
   }
 
-  const session = await mongoose.startSession();
-  console.log("Session started", session); // ✅ Start the session
+  const MAX_RETRIES = 3;
 
-  try {
-    await session.startTransaction(); // ✅ Begin the transaction
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    const session = await mongoose.startSession();
 
-    const order = await Order.findByIdAndUpdate(
-      orderId,
-      { status },
-      { new: true, session }
-    );
+    try {
+      session.startTransaction();
 
-    if (!order) {
-      throw new Error("Order not found");
+      const order = await Order.findByIdAndUpdate(
+        orderId,
+        { status },
+        { new: true, session }
+      );
+
+      if (!order) {
+        throw new Error("Order not found");
+      }
+
+      if (status === "delivered") {
+        await session.commitTransaction(); // commit the order update first
+        session.endSession();
+        // Then update wallet separately, outside transaction
+        await vendorWalletService.creditVendorForOrder(orderId);
+        return order;
+      }
+
+      await session.commitTransaction();
+      return order;
+    } catch (error) {
+      await session.abortTransaction();
+      session.endSession();
+
+      // Only retry on transient transaction errors
+      if (
+        error.hasErrorLabel?.("TransientTransactionError") ||
+        /Write conflict/.test(error.message)
+      ) {
+        console.warn(`Transaction conflict. Retrying attempt ${attempt + 1}`);
+        if (attempt < MAX_RETRIES - 1) continue;
+      }
+
+      throw error;
+    } finally {
+      if (session.inTransaction()) {
+        await session.abortTransaction();
+      }
+      session.endSession();
     }
-
-    if (status === "delivered") {
-      await vendorWalletService.creditVendorForOrder(orderId, { session });
-    }
-
-    await session.commitTransaction();
-    return order;
-  } catch (error) {
-    await session.abortTransaction();
-    throw error;
-  } finally {
-    session.endSession(); // ✅ End the session
   }
 }
 
