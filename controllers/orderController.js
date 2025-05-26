@@ -4,6 +4,7 @@ const Order = require("../models/orderModel");
 const Vendor = require("../models/Vendor");
 const User = require("../models/User");
 const vendorWalletService = require("../services/vendorWalletService");
+const Menu = require("../models/menuModel");
 
 async function checkout(req, res) {
   try {
@@ -197,21 +198,88 @@ async function getVendorOrders(req, res) {
   }
 }
 
+const submitMenuRating = async (req, res) => {
+  try {
+    const { orderId, menuId } = req.params;
+    const { userId } = req.user;
+    const { score, comment } = req.body;
+
+    if (!score || score < 1 || score > 5) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Provide a valid rating (1–5)" });
+    }
+
+    // Find order and validate it
+    const order = await Order.findOne({
+      _id: orderId,
+      userId,
+      status: "delivered",
+    });
+    if (!order)
+      return res
+        .status(404)
+        .json({ success: false, message: "Order not found" });
+
+    // Check if menu exists in the order
+    const orderedMenuItem = order.items.find(
+      (item) => item.menuId.toString() === menuId
+    );
+    if (!orderedMenuItem) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Menu item not part of this order" });
+    }
+
+    // Check for existing rating for this menu item
+    const alreadyRated = order.menuRatings?.some(
+      (r) => r.menuId.toString() === menuId
+    );
+    if (alreadyRated) {
+      return res.status(400).json({
+        success: false,
+        message: "Menu item already rated in this order",
+      });
+    }
+
+    // Add menu rating to order
+    order.menuRatings.push({
+      menuId,
+      score: Number(score),
+      comment: comment || "",
+      ratedAt: new Date(),
+    });
+
+    await order.save();
+
+    // Update menu's average rating
+    await updateMenuRating(menuId);
+
+    // Optionally update vendor rating as an average of their menus
+    const menu = await Menu.findById(menuId);
+    if (menu) await updateVendorRating(menu.vendorId);
+
+    res.json({ success: true, message: "Menu item rated successfully" });
+  } catch (err) {
+    console.error("Menu rating error:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 const submitRating = async (req, res) => {
   try {
     const { orderId } = req.params;
     const { userId } = req.user;
-    const { score, comment } = req.body;
+    const { overallScore, overallComment, menuRatings } = req.body;
 
-    // Validate input
-    if (!score || score < 1 || score > 5) {
+    // Validate overall score (optional but recommended)
+    if (overallScore && (overallScore < 1 || overallScore > 5)) {
       return res.status(400).json({
         success: false,
-        message: "Please provide a valid rating between 1 and 5",
+        message: "Overall rating must be between 1 and 5.",
       });
     }
 
-    // Find the order
     const order = await Order.findOne({
       _id: orderId,
       userId,
@@ -225,32 +293,64 @@ const submitRating = async (req, res) => {
       });
     }
 
-    // Improved check for existing rating
-    if (order.rating && order.rating.score) {
-      console.log("Existing rating found:", order.rating);
+    // Check if already rated
+    if (order.rating?.score || order.menuRatings?.length > 0) {
       return res.status(400).json({
         success: false,
-        message: "You've already rated this order",
+        message: "You have already rated this order or menu items.",
       });
     }
 
-    // Update the order with rating
-    order.rating = {
-      score: Number(score),
-      comment: comment || "",
-      ratedAt: new Date(),
-    };
+    // Save overall order rating
+    if (overallScore) {
+      order.rating = {
+        score: overallScore,
+        comment: overallComment || "",
+        ratedAt: new Date(),
+      };
+    }
 
-    const savedOrder = await order.save();
-    console.log("Order after rating saved:", savedOrder);
+    // Validate and save menuRatings
+    if (Array.isArray(menuRatings)) {
+      for (const rating of menuRatings) {
+        const { menuId, score, comment } = rating;
 
-    // Update vendor's average rating
+        if (!menuId || !score || score < 1 || score > 5) continue;
+
+        const itemExists = order.items.some(
+          (item) => item.menuId.toString() === menuId
+        );
+
+        if (itemExists) {
+          order.menuRatings.push({
+            menuId,
+            score,
+            comment: comment || "",
+            ratedAt: new Date(),
+          });
+
+          // Update Menu model rating
+          const menu = await Menu.findById(menuId);
+          if (menu) {
+            const newTotal = menu.averageRating * menu.ratingCount + score;
+            menu.ratingCount += 1;
+            menu.averageRating = newTotal / menu.ratingCount;
+            await menu.save();
+          }
+        }
+      }
+    }
+
+    // Save the order
+    await order.save();
+
+    // Update vendor's average rating based on all menu items
     await vendorServices.updateVendorRating(order.vendorId);
 
     return res.json({
       success: true,
       message: "Thank you for your rating!",
-      order: savedOrder,
+      order,
     });
   } catch (error) {
     console.error("Error submitting rating:", error);

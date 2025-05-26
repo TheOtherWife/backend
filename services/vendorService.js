@@ -5,6 +5,7 @@ const crypto = require("crypto");
 const { sendEmail } = require("./emailService");
 const mongoose = require("mongoose");
 const vendorStatsService = require("./vendorStatsService");
+const Menu = require("../models/menuModel");
 
 const registerVendor = async (vendorData) => {
   const {
@@ -249,7 +250,12 @@ const getVendorById = async (vendorId, includeStats = false) => {
   return result;
 };
 
-const getVendors = async (filters = {}, page = 1, limit = 24) => {
+const getVendorsWithDishes = async (
+  filters = {},
+  page = 1,
+  limit = 24,
+  userLocation = null
+) => {
   const {
     searchQuery,
     minPrice,
@@ -258,26 +264,18 @@ const getVendors = async (filters = {}, page = 1, limit = 24) => {
     minRating,
     category,
     location,
+    city, // Add city filter
   } = filters;
 
-  // Base query for vendor filtering
   const vendorQuery = {};
 
-  // Search filter
+  // Search query filter
   if (searchQuery) {
     vendorQuery.$or = [
       { firstName: { $regex: searchQuery, $options: "i" } },
       { lastName: { $regex: searchQuery, $options: "i" } },
       { displayName: { $regex: searchQuery, $options: "i" } },
       { cuisineSpecifications: { $regex: searchQuery, $options: "i" } },
-    ];
-  }
-
-  // Location filter
-  if (location) {
-    vendorQuery.$or = [
-      { city: { $regex: location, $options: "i" } },
-      { state: { $regex: location, $options: "i" } },
     ];
   }
 
@@ -291,100 +289,144 @@ const getVendors = async (filters = {}, page = 1, limit = 24) => {
     vendorQuery.averageRating = { $gte: Number(minRating) };
   }
 
-  // Build aggregation pipeline
-  const pipeline = [
+  // Location filters - prioritize userLocation if provided
+  if (userLocation?.longitude && userLocation?.latitude) {
+    vendorQuery["addresses.location"] = {
+      $nearSphere: {
+        $geometry: {
+          type: "Point",
+          coordinates: [userLocation.longitude, userLocation.latitude],
+        },
+        $maxDistance: 50000, // 50km radius
+      },
+    };
+  } else if (location) {
+    vendorQuery.$or = [
+      { city: { $regex: location, $options: "i" } },
+      { state: { $regex: location, $options: "i" } },
+    ];
+  }
+
+  // City filter - added this to specifically filter by city
+  if (city) {
+    vendorQuery.city = { $regex: new RegExp(city, "i") };
+  }
+
+  // Dish price filter
+  const dishPriceFilter = {};
+  if (minPrice !== undefined) dishPriceFilter.$gte = Number(minPrice);
+  if (maxPrice !== undefined) dishPriceFilter.$lte = Number(maxPrice);
+
+  const dishMatchConditions = {};
+
+  if (Object.keys(dishPriceFilter).length > 0) {
+    dishMatchConditions["menus.basePrice"] = dishPriceFilter;
+  }
+
+  if (preparationType) {
+    dishMatchConditions["menus.preparationType"] = {
+      $in: preparationType.split(",").map((p) => p.trim()),
+    };
+  }
+
+  // Popular dishes pipeline
+  const popularDishesPipeline = [
     { $match: vendorQuery },
     {
       $lookup: {
         from: "menus",
         localField: "_id",
         foreignField: "vendorId",
-        as: "menuItems",
+        as: "menus",
       },
     },
-    { $unwind: { path: "$menuItems", preserveNullAndEmptyArrays: true } },
+    { $unwind: "$menus" },
   ];
 
-  // Menu item filters
-  const menuItemFilters = {};
-
-  // Price filter
-  if (minPrice || maxPrice) {
-    menuItemFilters["menuItems.basePrice"] = {};
-    if (minPrice)
-      menuItemFilters["menuItems.basePrice"].$gte = Number(minPrice);
-    if (maxPrice)
-      menuItemFilters["menuItems.basePrice"].$lte = Number(maxPrice);
+  // Add dish filters if they exist
+  if (Object.keys(dishMatchConditions).length > 0) {
+    popularDishesPipeline.push({ $match: dishMatchConditions });
   }
 
-  // Preparation type filter
-  if (preparationType) {
-    menuItemFilters["menuItems.preparationType"] = {
-      $in: preparationType.split(","),
-    };
-  }
-
-  // Add menu item filters if any exist
-  if (Object.keys(menuItemFilters).length > 0) {
-    pipeline.push({ $match: menuItemFilters });
-  }
-
-  // Reconstruct vendors with filtered menu items
-  pipeline.push({
-    $group: {
-      _id: "$_id",
-      doc: { $first: "$$ROOT" },
-      menuItems: { $push: "$menuItems" },
-    },
-  });
-
-  // Reshape document
-  pipeline.push({
-    $replaceRoot: {
-      newRoot: {
-        $mergeObjects: ["$doc", { menuItems: "$menuItems" }],
+  popularDishesPipeline.push(
+    {
+      $project: {
+        _id: 0,
+        menuId: "$menus._id",
+        name: "$menus.name",
+        basePrice: "$menus.basePrice",
+        image: "$menus.image",
+        vendorId: "$_id",
+        vendorName: "$displayName",
+        ratingCount: "$menus.ratingCount",
+        averageRating: "$menus.averageRating",
       },
     },
-  });
+    { $sort: { ratingCount: -1 } },
+    { $limit: 10 }
+  );
 
-  // Pagination
-  pipeline.push({ $skip: (page - 1) * limit }, { $limit: limit });
+  // Dishes just for you pipeline - same filters but different sorting
+  const justForYouPipeline = [...popularDishesPipeline];
+  justForYouPipeline.pop(); // remove last limit stage
+  justForYouPipeline.pop(); // remove last sort stage
+  justForYouPipeline.push({ $sort: { averageRating: -1 } }, { $limit: 4 });
 
-  // Execute aggregation
-  const vendors = await Vendor.aggregate(pipeline);
+  // Closest stores pipeline - apply vendor query with pagination
+  const skip = (page - 1) * limit;
+  const closestStoresQuery = Vendor.find(vendorQuery)
+    .skip(skip)
+    .limit(limit)
+    .select("-password -resetPasswordToken -resetPasswordExpires");
 
-  // Get total count (simplified count without menu item filters)
-  const totalVendors = await Vendor.countDocuments(vendorQuery);
+  // If user location is provided, sort by distance
+  if (userLocation?.longitude && userLocation?.latitude) {
+    closestStoresQuery.sort({
+      "addresses.location": {
+        $near: {
+          $geometry: {
+            type: "Point",
+            coordinates: [userLocation.longitude, userLocation.latitude],
+          },
+        },
+      },
+    });
+  }
+
+  const [popularDishes, dishesJustForYou, closestStores] = await Promise.all([
+    Vendor.aggregate(popularDishesPipeline),
+    Vendor.aggregate(justForYouPipeline),
+    closestStoresQuery.lean(),
+  ]);
 
   return {
-    vendors,
-    totalVendors,
-    totalPages: Math.ceil(totalVendors / limit),
-    currentPage: page,
+    popularDishes,
+    dishesJustForYou,
+    closestStores,
   };
 };
 
 async function updateVendorRating(vendorId) {
-  // Get all delivered orders for this vendor with ratings
-  const orders = await Order.find({
-    vendorId,
-    status: "delivered",
-    "rating.score": { $exists: true },
-  });
+  const menus = await Menu.find({ vendorId });
 
-  if (orders.length === 0) return;
-
-  // Calculate average rating
-  const totalRatings = orders.reduce(
-    (sum, order) => sum + order.rating.score,
-    0
+  const allRatings = menus.reduce(
+    (acc, menu) => {
+      if (menu.ratingCount > 0) {
+        acc.total += menu.averageRating * menu.ratingCount;
+        acc.count += menu.ratingCount;
+      }
+      return acc;
+    },
+    { total: 0, count: 0 }
   );
-  const averageRating = totalRatings / orders.length;
 
-  // Update vendor's average rating
+  if (allRatings.count === 0) return;
+
+  const vendorAvg = allRatings.total / allRatings.count;
+
   await Vendor.findByIdAndUpdate(vendorId, {
-    averageRating: parseFloat(averageRating.toFixed(1)),
-    ratingCount: orders.length,
+    averageRating: parseFloat(vendorAvg.toFixed(1)),
+    ratingCount: allRatings.count,
   });
 }
 
@@ -395,6 +437,6 @@ module.exports = {
   changePassword,
   updateProfile,
   getVendorById,
-  getVendors,
+  getVendorsWithDishes,
   updateVendorRating,
 };

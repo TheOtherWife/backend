@@ -17,6 +17,8 @@ const menuSchema = new mongoose.Schema({
   drinks: [{ type: mongoose.Schema.Types.ObjectId, ref: "Drink" }], // Available drinks for this meal
   meats: [{ type: mongoose.Schema.Types.ObjectId, ref: "Meat" }], // Available meats for this meal
   stews: [{ type: mongoose.Schema.Types.ObjectId, ref: "Stew" }], // Available stews for this meal
+  averageRating: { type: Number, default: 0 },
+  ratingCount: { type: Number, default: 0 },
   isAvailable: { type: Boolean, default: true }, // Availability status
 });
 

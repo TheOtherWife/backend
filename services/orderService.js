@@ -239,6 +239,51 @@ async function getOrderById(orderId) {
     });
 }
 
+async function updateMenuRating(menuId) {
+  const orders = await Order.find({
+    status: "delivered",
+    "menuRatings.menuId": menuId,
+  });
+
+  const ratings = orders.flatMap((order) =>
+    order.menuRatings.filter((r) => r.menuId.toString() === menuId)
+  );
+
+  if (ratings.length === 0) return;
+
+  const total = ratings.reduce((sum, r) => sum + r.score, 0);
+  const avg = total / ratings.length;
+
+  await Menu.findByIdAndUpdate(menuId, {
+    averageRating: parseFloat(avg.toFixed(1)),
+    ratingCount: ratings.length,
+  });
+}
+
+async function updateVendorRating(vendorId) {
+  const menus = await Menu.find({ vendorId });
+
+  const allRatings = menus.reduce(
+    (acc, menu) => {
+      if (menu.ratingCount > 0) {
+        acc.total += menu.averageRating * menu.ratingCount;
+        acc.count += menu.ratingCount;
+      }
+      return acc;
+    },
+    { total: 0, count: 0 }
+  );
+
+  if (allRatings.count === 0) return;
+
+  const vendorAvg = allRatings.total / allRatings.count;
+
+  await Vendor.findByIdAndUpdate(vendorId, {
+    averageRating: parseFloat(vendorAvg.toFixed(1)),
+    ratingCount: allRatings.count,
+  });
+}
+
 // async function getUserOrders(userId) {
 //   return await Order.find({ userId })
 //     .sort({ createdAt: -1 })

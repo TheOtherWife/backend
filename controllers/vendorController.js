@@ -369,11 +369,26 @@ const getVendors = async (req, res) => {
       minRating,
       category,
       location,
+      city, // Add city parameter
       page = 1,
       limit = 24,
+      userLongitude,
+      userLatitude,
     } = req.query;
 
-    const result = await vendorService.getVendors({
+    // Parse user location if provided
+    const userLocation =
+      userLongitude &&
+      userLatitude &&
+      !isNaN(userLongitude) &&
+      !isNaN(userLatitude)
+        ? {
+            longitude: parseFloat(userLongitude),
+            latitude: parseFloat(userLatitude),
+          }
+        : null;
+
+    const filters = {
       searchQuery,
       minPrice,
       maxPrice,
@@ -381,24 +396,26 @@ const getVendors = async (req, res) => {
       minRating,
       category,
       location,
-      page: Number(page),
-      limit: Number(limit),
-    });
+      city, // Add city to filters
+    };
+
+    const result = await vendorService.getVendorsWithDishes(
+      filters,
+      Number(page),
+      Number(limit),
+      userLocation
+    );
 
     res.status(200).json({
-      message: "Vendors retrieved successfully",
-      vendors: result.vendors,
-      pagination: {
-        totalVendors: result.totalVendors,
-        totalPages: result.totalPages,
-        currentPage: result.currentPage,
-        limit: Number(limit),
-      },
+      message: "Vendors and dishes retrieved successfully",
+      popularDishes: result.popularDishes,
+      dishesJustForYou: result.dishesJustForYou,
+      closestStores: result.closestStores,
     });
   } catch (error) {
     console.error("Error in getVendors controller:", error);
     res.status(500).json({
-      message: "Error fetching vendors",
+      message: "Error fetching vendors and dishes",
       error: error.message,
     });
   }

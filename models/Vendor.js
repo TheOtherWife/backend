@@ -1,64 +1,75 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 
+const addressSchema = new mongoose.Schema({
+  addressLine1: { type: String, required: true },
+  addressLine2: { type: String },
+  city: { type: String, required: true },
+  state: { type: String, required: true },
+  postalCode: { type: String, required: true },
+  country: { type: String, default: "Nigeria" },
+  location: {
+    type: {
+      type: String,
+      enum: ["Point"],
+      default: "Point",
+    },
+    coordinates: {
+      type: [Number], // [longitude, latitude]
+      required: true,
+    },
+  },
+});
+
+// addressSchema.index({ location: "2dsphere" }); // Index for geospatial queries
+
 const vendorSchema = new mongoose.Schema(
   {
     firstName: { type: String, required: true },
     lastName: { type: String, required: true },
-    displayName: { type: String, required: false }, // Make optional
+    displayName: { type: String },
     email: { type: String, required: true, unique: true },
     phoneNumber: { type: String, required: true },
     alternatePhoneNumber: { type: String },
     state: { type: String, required: true },
     city: { type: String, required: true },
-    addresses: [
-      {
-        addressLine1: { type: String, required: true },
-        addressLine2: { type: String },
-        city: { type: String, required: true },
-        state: { type: String, required: true },
-        postalCode: { type: String, required: true },
-        country: { type: String, default: "Nigeria" },
-      },
-    ],
+    addresses: [addressSchema], // Use subdocument schema here
+
     socialMedia: {
       instagram: { type: String },
       facebook: { type: String },
       youtube: { type: String },
       xHandle: { type: String },
     },
+
     yearsOfExperience: { type: Number, required: true },
-    cuisineSpecifications: {
-      type: [String],
-    },
+    cuisineSpecifications: { type: [String] },
+
     bvn: { type: String, required: true },
     accountNumber: { type: String, required: true },
     accountName: { type: String, required: true },
     bankName: { type: String, required: true },
-    idImage: { type: String, required: true }, // File path or URL
-    displayImage: { type: String, required: false },
-    certificateImage: { type: String, required: true }, // File path or URL
+    idImage: { type: String, required: true },
+    displayImage: { type: String },
+    certificateImage: { type: String, required: true },
 
     password: { type: String, select: false },
     passwordChangedAt: Date,
     resetPasswordToken: { type: String },
     resetPasswordExpires: { type: Date },
+
     averageRating: { type: Number, default: 0 },
     ratingCount: { type: Number, default: 0 },
-    walletBalance: {
-      type: Number,
-      default: 0,
-      min: 0,
-    },
-    pendingBalance: {
-      type: Number,
-      default: 0,
-      min: 0,
-    },
+
+    walletBalance: { type: Number, default: 0, min: 0 },
+    pendingBalance: { type: Number, default: 0, min: 0 },
+
     lastPayoutDate: Date,
   },
   { timestamps: true }
 );
+
+// Add password hashing and methods here (same as before)...
 
 // Middleware to hash password before saving
 vendorSchema.pre("save", async function (next) {
@@ -115,4 +126,8 @@ vendorSchema.methods.changedPasswordAfter = function (JWTTimestamp) {
   return false;
 };
 
-module.exports = mongoose.model("Vendor", vendorSchema);
+vendorSchema.index({ "addresses.location": "2dsphere" }); // Important: geospatial index on vendor addresses
+
+// module.exports = mongoose.model("Vendor", vendorSchema);
+module.exports =
+  mongoose.models.Vendor || mongoose.model("Vendor", vendorSchema);

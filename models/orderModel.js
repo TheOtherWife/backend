@@ -141,6 +141,18 @@ const orderSchema = new mongoose.Schema(
       comment: String,
       ratedAt: Date,
     },
+    menuRatings: [
+      {
+        menuId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Menu",
+          required: true,
+        },
+        score: { type: Number, min: 1, max: 5, required: true },
+        comment: { type: String },
+        ratedAt: { type: Date, default: Date.now },
+      },
+    ],
   },
   { timestamps: true }
 );
