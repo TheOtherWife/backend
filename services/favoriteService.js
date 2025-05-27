@@ -1,5 +1,5 @@
 const User = require("../models/User");
-const Menu = require("../models/Menu");
+const Menu = require("../models/menuModel");
 const Vendor = require("../models/Vendor");
 
 // Favorite Menus

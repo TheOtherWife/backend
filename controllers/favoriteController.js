@@ -3,7 +3,7 @@ const favoriteService = require("../services/favoriteService");
 // Favorite Menus
 const getFavoriteMenus = async (req, res) => {
   try {
-    const userId = req.user._id; // Assuming user is authenticated and user ID is available in req.user
+    const userId = req.user._id;
     const favoriteMenus = await favoriteService.getFavoriteMenus(userId);
     res.status(200).json({
       status: "success",
