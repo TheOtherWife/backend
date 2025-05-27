@@ -3,7 +3,6 @@ const Menu = require("../models/menuModel");
 const Vendor = require("../models/Vendor");
 
 const getFavoriteMenus = async (userId) => {
-  console.log("Received userId:", userId); // Debug the input
   if (typeof userId !== "string" || !userId.match(/^[0-9a-fA-F]{24}$/)) {
     throw new Error("Invalid userId format");
   }
@@ -54,7 +53,6 @@ const removeFavoriteMenu = async (userId, menuId) => {
 };
 
 const getFavoriteVendors = async (userId) => {
-  console.log("Received userId:", userId); // Debug the input
   if (typeof userId !== "string" || !userId.match(/^[0-9a-fA-F]{24}$/)) {
     throw new Error("Invalid userId format");
   }

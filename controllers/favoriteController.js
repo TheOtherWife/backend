@@ -4,7 +4,6 @@ const favoriteService = require("../services/favoriteService");
 const getFavoriteMenus = async (req, res) => {
   try {
     const userId = req.user.userId; // Extract userId from the req.user object
-    console.log("Controller userId:", userId); // Debug
     const favoriteMenus = await favoriteService.getFavoriteMenus(userId);
     if (!favoriteMenus) {
       return res.status(404).json({
