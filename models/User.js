@@ -24,6 +24,8 @@ const userSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    favoriteMenus: [{ type: mongoose.Schema.Types.ObjectId, ref: "Menu" }], // Array of favorite menu IDs
+    favoriteVendors: [{ type: mongoose.Schema.Types.ObjectId, ref: "Vendor" }], // Array of favorite vendor IDs
   },
   { timestamps: true }
 );

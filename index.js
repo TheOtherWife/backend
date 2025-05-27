@@ -15,6 +15,7 @@ const orderRoutes = require("./routes/orderRoutes");
 const walletRoutes = require("./routes/walletRoutes");
 const vendorWalletRoutes = require("./routes/vendorWalletRoutes");
 const mealPlanRoutes = require("./routes/mealPlanRoutes");
+const favoriteRoutes = require("./routes/favoriteRoutes");
 
 require("./jobs/dailyPayouts");
 const { configureCloudinary, cloudinary } = require("./utils/cloudinary");
@@ -72,6 +73,7 @@ app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/wallet", walletRoutes);
 app.use("/api/vendorwallet", vendorWalletRoutes);
+app.use("/api/favorites", favoriteRoutes);
 app.use("/api", userRoutes);
 
 // app.use("/api/v1/paystack", pastackRoutes);
