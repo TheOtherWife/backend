@@ -10,7 +10,7 @@ const createStew = async (req, res) => {
     // If file was uploaded, upload to Cloudinary
     if (req.file) {
       const cloudinaryResponse = await cloudinaryUpload(req.file); // Upload the file to Cloudinary
-      additiveData.image = cloudinaryResponse.secure_url; // Save the Cloudinary URL
+      stewData.image = cloudinaryResponse.secure_url; // Save the Cloudinary URL
     }
 
     const stew = await stewService.createStew(vendorId, stewData);

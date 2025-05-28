@@ -10,8 +10,10 @@ const createMenu = async (req, res) => {
     // If file was uploaded, upload to Cloudinary
     if (req.file) {
       const cloudinaryResponse = await cloudinaryUpload(req.file); // Upload the file to Cloudinary
-      additiveData.image = cloudinaryResponse.secure_url; // Save the Cloudinary URL
+      menuData.image = cloudinaryResponse.secure_url; // Save the Cloudinary URL
     }
+
+    console.log(menuData);
 
     const menu = await menuService.createMenu(vendorId, menuData);
 

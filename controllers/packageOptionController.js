@@ -10,7 +10,7 @@ const createPackageOption = async (req, res) => {
     // If file was uploaded, upload to Cloudinary
     if (req.file) {
       const cloudinaryResponse = await cloudinaryUpload(req.file); // Upload the file to Cloudinary
-      additiveData.image = cloudinaryResponse.secure_url; // Save the Cloudinary URL
+      packageOptionData.image = cloudinaryResponse.secure_url; // Save the Cloudinary URL
     }
 
     const packageOption = await packageOptionService.createPackageOption(

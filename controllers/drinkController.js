@@ -8,7 +8,7 @@ const createDrink = async (req, res) => {
     // If file was uploaded, upload to Cloudinary
     if (req.file) {
       const cloudinaryResponse = await cloudinaryUpload(req.file); // Upload the file to Cloudinary
-      additiveData.image = cloudinaryResponse.secure_url; // Save the Cloudinary URL
+      drinkData.image = cloudinaryResponse.secure_url; // Save the Cloudinary URL
     }
 
     const drink = await drinkService.createDrink(vendorId, drinkData);
