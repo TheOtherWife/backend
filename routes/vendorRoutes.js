@@ -37,7 +37,7 @@ router.put(
 // Edit profile
 // router.put("/profile", vendorAuthMiddleware, vendorController.updateProfile);
 
-router.post(
+router.put(
   "/profile",
   vendorAuthMiddleware,
   upload.fields([
