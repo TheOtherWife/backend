@@ -259,6 +259,30 @@ const updateProfile = async (req, res) => {
       }
     }
 
+    if (updateData.addresses && Array.isArray(updateData.addresses)) {
+      updateData.addresses = updateData.addresses.map((address) => {
+        if (
+          address.location &&
+          address.location.type === "Point" &&
+          Array.isArray(address.location.coordinates)
+        ) {
+          const [lng, lat] = address.location.coordinates;
+          if (
+            typeof lng === "number" &&
+            typeof lat === "number" &&
+            !isNaN(lng) &&
+            !isNaN(lat)
+          ) {
+            return address; // Valid address with valid location
+          }
+        }
+
+        // If location is invalid, remove it completely
+        delete address.location;
+        return address;
+      });
+    }
+
     // Update profile data
     const updatedVendor = await Vendor.findByIdAndUpdate(
       vendorId,
