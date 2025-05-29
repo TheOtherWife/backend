@@ -45,7 +45,7 @@ const vendorSchema = new mongoose.Schema(
     yearsOfExperience: { type: Number, required: true },
     cuisineSpecifications: { type: [String] },
 
-    bvn: { type: String, required: true },
+    bvn: { type: String },
     accountNumber: { type: String, required: true },
     accountName: { type: String, required: true },
     bankName: { type: String, required: true },

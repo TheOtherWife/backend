@@ -6,6 +6,7 @@ const createStew = async (req, res) => {
   try {
     const { vendorId } = req.vendor;
     const stewData = req.body;
+    console.log(stewData);
 
     // If file was uploaded, upload to Cloudinary
     if (req.file) {
