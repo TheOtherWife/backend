@@ -15,7 +15,7 @@ const orderRoutes = require("./routes/orderRoutes");
 const walletRoutes = require("./routes/walletRoutes");
 const vendorWalletRoutes = require("./routes/vendorWalletRoutes");
 const mealPlanRoutes = require("./routes/mealPlanRoutes");
-const favoriteRoutes = require("./routes/favoriteRoutes");
+// const favoriteRoutes = require("./routes/favoriteRoutes");
 
 require("./jobs/dailyPayouts");
 const { configureCloudinary, cloudinary } = require("./utils/cloudinary");
