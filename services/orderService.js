@@ -7,7 +7,6 @@ const { v4: uuidv4 } = require("uuid");
 const mongoose = require("mongoose");
 
 async function checkoutCart(userId, checkoutData) {
-  // Get user's cart with populated data
   const cart = await Cart.findOne({ userId })
     .populate("items.menuId")
     .populate("items.packageOptionId")

@@ -210,7 +210,6 @@ const submitMenuRating = async (req, res) => {
         .json({ success: false, message: "Provide a valid rating (1–5)" });
     }
 
-    // Find order and validate it
     const order = await Order.findOne({
       _id: orderId,
       userId,
