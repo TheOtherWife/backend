@@ -1,5 +1,5 @@
 const User = require("../../models/User");
-const Order = require("../../models/OrderModel");
+const Order = require("../../models/orderModel");
 const WalletTransaction = require("../../models/walletTransactionModel");
 
 class UserService {
