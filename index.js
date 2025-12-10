@@ -16,6 +16,10 @@ const walletRoutes = require("./routes/walletRoutes");
 const vendorWalletRoutes = require("./routes/vendorWalletRoutes");
 const mealPlanRoutes = require("./routes/mealPlanRoutes");
 const favoriteRoutes = require("./routes/favoriteRoutes");
+const authMiddleware = require("./middleware/authMiddleware"); // Changed import
+const adminMiddleware = require("./middleware/adminMiddleware");
+
+const adminRoutes = require("./routes/adminRoutes");
 
 require("./jobs/dailyPayouts");
 const { configureCloudinary, cloudinary } = require("./utils/cloudinary");
@@ -39,7 +43,7 @@ configureCloudinary(
 );
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3100;
 
 // Middleware
 app.use(bodyParser.json());
@@ -60,7 +64,15 @@ app.get("/", (req, res) => {
 
 const cors = require("cors");
 app.use(cors("*"));
+app.use(
+  cors({
+    origin: process.env.ADMIN_FRONTEND_URL || "http://localhost:3000",
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
+// Routes
 app.use("/api/vendors", vendorRoutes);
 app.use("/api/meal-plans", mealPlanRoutes);
 app.use("/api/menu", menuRoutes);
@@ -74,12 +86,20 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/wallet", walletRoutes);
 app.use("/api/vendorwallet", vendorWalletRoutes);
 app.use("/api/favorites", favoriteRoutes);
+
+// Updated admin routes middleware
+app.use(
+  "/api/admin",
+  authMiddleware.authMiddleware, // Access the authMiddleware property
+  adminMiddleware.requireAdmin, // Access the requireAdmin property
+  adminRoutes
+);
+
 app.use("/api", userRoutes);
 
-// app.use("/api/v1/paystack", pastackRoutes);
+// Paystack routes
 app.post("/api/paystack/create", handlePayment(PAY_STACK_SECRET_KEY));
 app.get("/api/paystack/verify", handleVerifyTransaction(PAY_STACK_SECRET_KEY));
-// app.use(notFound);
 
 // Start server
 app.listen(PORT, () => {

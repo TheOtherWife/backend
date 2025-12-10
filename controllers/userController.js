@@ -1,65 +1,81 @@
+const { OAuth2Client } = require("google-auth-library");
+const jwt = require("jsonwebtoken");
 const userService = require("../services/userService");
 
+const googleClient = new OAuth2Client(process.env.GOOGLE_WEB_CLIENT_ID);
+
+// Helper to generate JWT
+const generateToken = (userId) =>
+  jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: "7d" });
+
+/**
+ * Google login / signup
+ */
+const googleLogin = async (req, res) => {
+  try {
+    const { idToken } = req.body;
+    if (!idToken)
+      return res.status(400).json({ message: "idToken is required" });
+
+    const ticket = await googleClient.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_WEB_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    const { email, given_name, family_name, picture, sub } = payload;
+
+    const { user } = await userService.googleLogin({
+      email,
+      firstName: given_name,
+      lastName: family_name,
+      googleId: sub,
+      profileImage: picture,
+    });
+
+    const token = generateToken(user._id);
+
+    res.json({ message: "Google login successful", user, token });
+  } catch (error) {
+    console.error("Google login error:", error);
+    res.status(400).json({ message: "Invalid Google token" });
+  }
+};
+
+/**
+ * Local registration
+ */
 const registerUser = async (req, res) => {
   try {
-    const userData = req.body;
-
-    // Log the incoming request payload for debugging
-
-    // Validate the request body
-    if (!userData) {
-      return res.status(400).json({ message: "Request body is required" });
-    }
-
-    // Call the service to register the user
-    const user = await userService.registerUser(userData);
-
-    // Exclude password from the response
-    const userResponse = { ...user };
-    delete userResponse.password;
-
-    res.status(201).json({
-      message: "User registered successfully",
-      user: userResponse,
-    });
+    const user = await userService.registerUser(req.body);
+    res.status(201).json({ message: "User registered successfully", user });
   } catch (error) {
-    // Log the error for debugging
-    console.error("Error in registerUser controller:", error.message);
-
+    console.error("Register error:", error.message);
     res.status(400).json({ message: error.message });
   }
 };
 
+/**
+ * Local login
+ */
 const loginUser = async (req, res) => {
   try {
-    const { email, password } = req.body;
-
-    // Call the service to log in the user
-    const { user, token } = await userService.loginUser(email, password);
-
-    // Exclude password from the response
-    const userResponse = { ...user }; // Ensure this line is present
-    delete userResponse.password;
-
-    res.status(200).json({
-      message: "Login successful",
-      user: userResponse,
-      token,
-    });
+    const { user, token } = await userService.loginUser(
+      req.body.email,
+      req.body.password
+    );
+    res.json({ message: "Login successful", user, token });
   } catch (error) {
-    // Log the error for debugging
-    console.error("Error during login:", error.message);
-
+    console.error("Login error:", error.message);
     res.status(400).json({ message: error.message });
   }
 };
 
+// Password & profile management
 const forgotPassword = async (req, res) => {
   try {
-    const { email } = req.body;
-    await userService.forgotPassword(email);
-
-    res.status(200).json({
+    await userService.forgotPassword(req.body.email);
+    res.json({
       message:
         "If the email exists, a reset code has been sent. Please check your inbox.",
     });
@@ -70,32 +86,20 @@ const forgotPassword = async (req, res) => {
 
 const resetPassword = async (req, res) => {
   try {
-    const { token, newPassword } = req.body;
-
-    console.log("Reset password request:", { token, newPassword }); // Log the request payload
-
-    // Call the service to reset the password
-    const message = await userService.resetPassword(token, newPassword);
-
-    res.status(200).json({
-      message,
-    });
+    const message = await userService.resetPassword(
+      req.body.token,
+      req.body.newPassword
+    );
+    res.json({ message });
   } catch (error) {
-    console.error("Error in resetPassword controller:", error.message); // Log the error
     res.status(400).json({ message: error.message });
   }
 };
 
 const updateProfile = async (req, res) => {
   try {
-    const userId = req.user.userId; // Assuming userId is extracted from JWT
-    const updateData = req.body;
-    const user = await userService.updateProfile(userId, updateData);
-
-    res.status(200).json({
-      message: "Profile updated successfully",
-      user,
-    });
+    const user = await userService.updateProfile(req.user.userId, req.body);
+    res.json({ message: "Profile updated successfully", user });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
@@ -103,32 +107,22 @@ const updateProfile = async (req, res) => {
 
 const changePassword = async (req, res) => {
   try {
-    const userId = req.user.userId; // Assuming userId is extracted from JWT
-    const { oldPassword, newPassword } = req.body;
     const user = await userService.changePassword(
-      userId,
-      oldPassword,
-      newPassword
+      req.user.userId,
+      req.body.oldPassword,
+      req.body.newPassword
     );
-
-    res.status(200).json({
-      message: "Password changed successfully",
-      user,
-    });
+    res.json({ message: "Password changed successfully", user });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
 };
 
+// User retrieval
 const getUserProfile = async (req, res) => {
   try {
-    const userId = req.user.userId;
-    const user = await userService.getUserById(userId);
-
-    res.status(200).json({
-      message: "User retrieved successfully",
-      user,
-    });
+    const user = await userService.getUserById(req.user.userId);
+    res.json({ message: "User retrieved successfully", user });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
@@ -136,13 +130,8 @@ const getUserProfile = async (req, res) => {
 
 const getUser = async (req, res) => {
   try {
-    const userId = req.params.id;
-    const user = await userService.getUserById(userId);
-
-    res.status(200).json({
-      message: "User retrieved successfully",
-      user,
-    });
+    const user = await userService.getUserById(req.params.id);
+    res.json({ message: "User retrieved successfully", user });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
@@ -151,67 +140,58 @@ const getUser = async (req, res) => {
 const getAllUsers = async (req, res) => {
   try {
     const users = await userService.getAllUsers();
-
-    res.status(200).json({
-      message: "Users retrieved successfully",
-      users,
-    });
+    res.json({ message: "Users retrieved successfully", users });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
 };
 
+// Address management
 const addAddress = async (req, res) => {
   try {
-    const { userId } = req.user;
-    if (!userId) {
-      throw new Error("User ID is missing in the request.");
-    }
-
-    const updatedAddresses = await userService.addAddress(userId, req.body);
-    res.json({ success: true, addresses: updatedAddresses });
-  } catch (err) {
-    console.error("Error adding address:", err);
-    res.status(400).json({ success: false, message: err.message });
+    const addresses = await userService.addAddress(req.user.userId, req.body);
+    res.json({ success: true, addresses });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
   }
 };
 
 const updateAddress = async (req, res) => {
   try {
-    const { userId } = req.user;
-    const { addressId } = req.params;
-    const updatedAddresses = await userService.updateAddress(
-      userId,
-      addressId,
+    const addresses = await userService.updateAddress(
+      req.user.userId,
+      req.params.addressId,
       req.body
     );
-    res.json({ success: true, addresses: updatedAddresses });
-  } catch (err) {
-    res.status(400).json({ success: false, message: err.message });
+    res.json({ success: true, addresses });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
   }
 };
 
 const deleteAddress = async (req, res) => {
   try {
-    const { userId } = req.user;
-    const { addressId } = req.params;
-    const updatedAddresses = await userService.deleteAddress(userId, addressId);
-    res.json({ success: true, addresses: updatedAddresses });
-  } catch (err) {
-    res.status(400).json({ success: false, message: err.message });
+    const addresses = await userService.deleteAddress(
+      req.user.userId,
+      req.params.addressId
+    );
+    res.json({ success: true, addresses });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
   }
 };
 
 module.exports = {
   registerUser,
   loginUser,
+  googleLogin,
   forgotPassword,
   resetPassword,
   updateProfile,
   changePassword,
+  getUserProfile,
   getUser,
   getAllUsers,
-  getUserProfile,
   addAddress,
   updateAddress,
   deleteAddress,

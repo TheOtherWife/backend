@@ -1,131 +1,107 @@
 const User = require("../models/User");
-const jwt = require("jsonwebtoken");
-const crypto = require("crypto");
 const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 const { sendEmail } = require("./emailService");
 const { loadTemplate } = require("../utils/emailTemplateLoader");
 
-const registerUser = async (userData) => {
-  try {
-    const {
-      firstName,
-      lastName,
-      email,
-      phoneNumber,
-      deliveryAddresses,
-      password,
-    } = userData;
+const registerUser = async (data) => {
+  const {
+    firstName,
+    lastName,
+    email,
+    phoneNumber,
+    deliveryAddresses,
+    password,
+  } = data;
 
-    // List of required fields
-    const requiredFields = [
-      { field: "firstName", value: firstName },
-      { field: "lastName", value: lastName },
-      { field: "email", value: email },
-      { field: "phoneNumber", value: phoneNumber },
-      { field: "password", value: password },
-    ];
+  if (!firstName || !lastName || !email || !phoneNumber || !password)
+    throw new Error("All required fields must be provided");
 
-    // Check for missing required fields
-    const missingFields = requiredFields
-      .filter((field) => !field.value) // Filter out fields with missing values
-      .map((field) => field.field); // Extract the names of the missing fields
+  if (
+    !deliveryAddresses ||
+    !Array.isArray(deliveryAddresses) ||
+    deliveryAddresses.length === 0
+  )
+    throw new Error("At least one delivery address is required");
 
-    // If any required fields are missing, throw an error with the missing field names
-    if (missingFields.length > 0) {
-      throw new Error(
-        `The following fields are required: ${missingFields.join(", ")}`
-      );
-    }
+  const exists = await User.findOne({ email });
+  if (exists) throw new Error("User already exists");
 
-    // Validate deliveryAddresses
-    if (
-      !deliveryAddresses ||
-      !Array.isArray(deliveryAddresses) ||
-      deliveryAddresses.length === 0
-    ) {
-      throw new Error("At least one delivery address is required");
-    }
+  const hashed = await bcrypt.hash(password, 10);
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      throw new Error("User already exists");
-    }
+  const user = await User.create({
+    firstName,
+    lastName,
+    email,
+    phoneNumber,
+    deliveryAddresses,
+    password: hashed,
+  });
 
-    // Hash the password
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
+  const userObj = user.toObject();
+  delete userObj.password;
 
-    // Create a new user
-    const user = new User({
-      firstName,
-      lastName,
-      email,
-      phoneNumber,
-      deliveryAddresses,
-      password: hashedPassword,
-    });
+  // Send welcome email
+  const htmlContent = loadTemplate("welcome_user_email", {
+    FNAME: user.firstName,
+  });
+  await sendEmail({
+    subject: "Welcome!",
+    htmlContent,
+    fromName: "TheOtherWife",
+  });
 
-    // Save the user to the database
-    // Save the user to the database
-    await user.save();
-
-    // Add user to Mailchimp list
-    await mailchimp.lists.addListMember(LIST_ID, {
-      email_address: email,
-      status: "subscribed", // This means they will get emails immediately
-      merge_fields: {
-        FNAME: firstName,
-        LNAME: lastName,
-      },
-    });
-
-    // Exclude password from the response
-    const userResponse = user.toObject();
-    delete userResponse.password;
-
-    // Load email template
-    const htmlContent = loadTemplate("welcome_user_email", {
-      FNAME: user.firstName,
-    });
-
-    // Send email
-    await sendEmail({
-      subject:
-        "Welcome to TheOtherWife – Your Comfort Food Journey Starts Here!",
-      fromName: "TheOtherWife",
-      replyTo: "ayotundeolaiya@gmail.com",
-      htmlContent,
-    });
-
-    return userResponse;
-  } catch (error) {
-    console.error("Error in registerUser service:", error.message);
-    throw error; // Re-throw the error for the controller to handle
-  }
+  return userObj;
 };
 
 const loginUser = async (email, password) => {
   const user = await User.findOne({ email });
-  if (!user) {
-    throw new Error("User not found");
-  }
+  if (!user) throw new Error("User not found");
 
-  const isPasswordValid = await bcrypt.compare(password, user.password);
-  if (!isPasswordValid) {
-    throw new Error("Invalid password");
-  }
+  if (user.authProvider === "google")
+    throw new Error("Please login with Google");
 
-  // Generate JWT token
+  const valid = await bcrypt.compare(password, user.password);
+  if (!valid) throw new Error("Invalid password");
+
   const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-    expiresIn: "4800h", // Token expires in 4800 hours (200 days)
+    expiresIn: "7d",
   });
 
-  // Convert Mongoose document to a plain JavaScript object
-  const userResponse = user.toObject(); // Ensure this line is present
-  delete userResponse.password; // Exclude password from the response
+  const userObj = user.toObject();
+  delete userObj.password;
 
-  return { user: userResponse, token };
+  return { user: userObj, token };
+};
+
+/**
+ * Google login: creates user if not exists
+ */
+const googleLogin = async ({
+  email,
+  firstName,
+  lastName,
+  googleId,
+  profileImage,
+}) => {
+  let user = await User.findOne({ email });
+
+  if (!user) {
+    user = await User.create({
+      email,
+      firstName,
+      lastName,
+      googleId,
+      authProvider: "google",
+      password: null,
+      profileImage,
+    });
+  }
+
+  const userObj = user.toObject();
+  delete userObj.password;
+
+  return { user: userObj };
 };
 
 const forgotPassword = async (email) => {
@@ -289,12 +265,17 @@ const deleteAddress = async (userId, addressId) => {
 module.exports = {
   registerUser,
   loginUser,
+  googleLogin,
   forgotPassword,
   resetPassword,
   updateProfile,
   changePassword,
-  getUserById,
-  getAllUsers,
+  getUserById: async (id) => {
+    const user = await User.findById(id).select("-password");
+    if (!user) throw new Error("User not found");
+    return user;
+  },
+  getAllUsers: async () => User.find().select("-password"),
   addAddress,
   updateAddress,
   deleteAddress,

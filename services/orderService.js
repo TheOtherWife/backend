@@ -260,30 +260,6 @@ async function updateMenuRating(menuId) {
   });
 }
 
-async function updateVendorRating(vendorId) {
-  const menus = await Menu.find({ vendorId });
-
-  const allRatings = menus.reduce(
-    (acc, menu) => {
-      if (menu.ratingCount > 0) {
-        acc.total += menu.averageRating * menu.ratingCount;
-        acc.count += menu.ratingCount;
-      }
-      return acc;
-    },
-    { total: 0, count: 0 }
-  );
-
-  if (allRatings.count === 0) return;
-
-  const vendorAvg = allRatings.total / allRatings.count;
-
-  await Vendor.findByIdAndUpdate(vendorId, {
-    averageRating: parseFloat(vendorAvg.toFixed(1)),
-    ratingCount: allRatings.count,
-  });
-}
-
 // async function getUserOrders(userId) {
 //   return await Order.find({ userId })
 //     .sort({ createdAt: -1 })
@@ -314,4 +290,5 @@ module.exports = {
   getOrderById,
   getUserOrders,
   getVendorOrders,
+  updateMenuRating,
 };
